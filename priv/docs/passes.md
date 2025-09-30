@@ -1,3 +1,37 @@
+## Pass 0 Create tokens
+
+This is almost an Enum.reduce() sort of thing...
+
+Create a list of tokens with {:atom, value} tuples.
+There will be a {:line, line_number, "original line"} tuple before any of the line's tokens.
+In the case of a continuation line, there will be a {:continuation, line_number, "original line"} tuple before a continuation line.
+
+| Name / :atom  | Pattern                        | Value              | Description                                         |
+| ------------- | ------------------------------ | ------------------ | --------------------------------------------------- |
+| :number       | /\-?[0-9]+D?/                  | number             | Number, can be signed                               |
+| :number       | /[0-7]+B[0-7]?/                | number             | Octal Number                                        |
+| :spaces       | /\s+/                          | " "                | Separator; \n\|\r already removed                   |
+| :symbol       | /[0-9A-Z]+/                    | "\<the symbol\>"   | Symbol, op, pseudo-op                               |
+| :delimiter    | one of + - * / , ' ( ) = . $ _ | "\<the operator\>" | delimiter                                           |
+| :special      | one of : ; \< \> ? [ ] "       | "\<the special\>"  | special character                                   |
+| :string6      | /\'[^\']{1,4}'/                | "\<the string\>"   | string literal 1-4 characters with 6 bit characters |
+| :string8      | /\"[^\"]{1,}\"/                | "\<the string\>"   | string  with 8 bit characters                       |
+| :illegal      | any of  ! # % & @ ^            | \<the character\>" | "Replaced with blanks"! ?                           |
+| :end_of_line  | n/a                            | nil                | End of line indicator                               |
+| :continuation | /^+/                           | line#, line        | beginning of continuation                           |
+| :line         | /^[^+]/                        | line#, line        | beginning of line                                   |
+
+### Notes
+
+1. An identifier is any alphanumeric that does not form a number, so it is important to identify the octal number before the symbol.
+2. A line beginning with + is a continuation line of the previous line.
+3. A semicolon (;) betweeen parentheses or inside 'string6' does not terminate a line.
+
+### Peephole Transformations
+1. A peephole transformation must eliminate the {:end_of_line, _} tuple that precedes a {:continuation, \_}
+2. (AND), (OR), (NOT), (EOR), and (R) as {:delimiter, "("}, {:symbol, "..."}, {:delimiter, ")"} tuples must be transformed into e.g. the single tuple{:delimiter, "OR"}
+
+
 ## Pass 1 Build Abstract Syntax Tree
 
 This has a list of structs, which comprise
@@ -24,6 +58,27 @@ Strings can be 8 bit characters, any number: ```"twas brillig..."```.
 The ```index``` is boolean, true if ```,2``` immediately follows the address.
 
 A semicolon - ```;``` - anywhere in a line but neither in a string nor in a comment terminates the statement.
+
+## Instruction types
+
+| name or :atom | explanation                                  | note                   |
+| ------------- | -------------------------------------------- | ---------------------- |
+| a14           | instruction with 14 bit address, such as LDA | called class 1, type 0 |
+| a9            | instruction with 9 bit address, such as LSH  | called class 1, type 1 |
+| a0            | instruction with 0 bit address, such as CLA  | called class 2         |
+
+Instruction opcodes may be symbolic or numeric 
+
+## Address Fields
+
+The tag (,[0-7]) at the end of the address field indicates the first 3 bits of the instruction.
+It is normally ",2" indicating indexing. POPs and SYSPOPs are usually defined with the OPDEF pseudo instruction (or else by default - e.g. BRS)
+
+An address can be preceded by / or \_.
+The virgule (/) indicates indexing.
+(So " LDA /COUNTR,2" is redundant!)
+The underscore (\_), which was a backarrow back in the day, indicates indirection.
+(So " STA* \_CPOINTR" is redundant)
 
 ## State Machine
 
