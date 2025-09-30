@@ -25,6 +25,11 @@ defmodule ConductorTest do
     test_octal_decode("777B7", "777", 7)
   end
 
+  test "simple token" do
+    a = "A"
+    A940.Conductor.runner(a) |> dbg
+  end
+
   defp test_octal_decode(v) do
     assert A940.Tokenizer.decode_octal(v) == String.to_integer(v, 8)
   end

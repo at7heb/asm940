@@ -11,8 +11,8 @@ defmodule A940.Tokenizer do
   @string_6 ~r/^'[^']{1,4}'/
   @string_8 ~r/^"[^"]+"/
   @delimiter ~r/^[-+*\/,()=.$_]/
-  @special ~r/^[:;<>?[\]]/
-  @illegal ~r/^[!#%&@^]+/
+  @special ~r/^[:;<>?[\]!%&@]/
+  @illegal ~r/^[#^]+/
 
   def tokens(line_number, line) when is_integer(line_number) and is_binary(line) do
     cond do

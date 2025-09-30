@@ -26,6 +26,17 @@ defmodule A940.Conductor do
   end
 
   defp process(%A940.State{} = state) do
-    state
+    new_tokens_list =
+      Enum.reduce(
+        1..map_size(state.lines),
+        [],
+        fn line_number, token_list ->
+          tokens = A940.Tokenizer.tokens(line_number, Map.get(state.lines, line_number))
+          [tokens | token_list]
+        end
+      )
+      |> Enum.reverse()
+
+    %{state | tokens_list: new_tokens_list}
   end
 end
