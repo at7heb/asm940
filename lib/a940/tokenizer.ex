@@ -5,16 +5,17 @@ defmodule A940.Tokenizer do
   import Bitwise
 
   @white_space ~r/^\h+/
-  @decimal_number ~r/^\d+/
-  @octal_number ~r/^[0-7]+(B[0-7])?/
-  @symbol ~r/^[A-Z0-9]+/
+  @number ~r/^\d+/
+  @decimal_number ~r/^(\d+)(D)/
+  @octal_number ~r/^([0-7]+)B([0-7]?)/
+  @symbol ~r/^[A-Z0-9:]+/
   @string_6 ~r/^'[^']{1,4}'/
   @string_8 ~r/^"[^"]+"/
   @delimiter ~r/^[-+*\/,()=.$_]/
-  @special ~r/^[:;<>?[\]!%&@]/
+  @special ~r/^[;<>?[\]!%&@]/
   @illegal ~r/^[#^]+/
 
-  def tokens(line_number, line) when is_integer(line_number) and is_binary(line) do
+  def tokens(line_number, line, flags) when is_integer(line_number) and is_binary(line) do
     cond do
       String.length(line) == 0 ->
         %__MODULE__{line_number: line_number, tokens: [{:eol, ""}]}
@@ -26,24 +27,16 @@ defmodule A940.Tokenizer do
         }
 
       true ->
-        %__MODULE__{line_number: line_number, tokens: all_tokens(line, [])}
+        %__MODULE__{line_number: line_number, tokens: all_tokens(line, [], flags)}
     end
   end
 
-  def all_tokens(line, token_list) when line == "", do: Enum.reverse(token_list)
+  def all_tokens(line, token_list, _flags) when line == "", do: Enum.reverse(token_list)
 
-  def all_tokens(line, token_list) do
-    # white_space = ~r/^\h+/
-    # decimal_number = ~r/^\d+/
-    # octal_number = ~r/^[0-7]+(B[0-7])?/
-    # symbol = ~r/^[A-Z0-9]+/
-    # string_6 = ~r/^'[^']{1,4}'/
-    # string_8 = ~r/^"[^"]+"/
-    # delimiter = ~r/^[-+*\/,()=.$_]/
-    # special = ~r/^[:;<>?[\]]/
-    # illegal = ~r/^[!#%&@^]+/
+  def all_tokens(line, token_list, flags) do
     white_space = Regex.run(@white_space, line)
     decimal_number = Regex.run(@decimal_number, line)
+    number = Regex.run(@number, line)
     octal_number = Regex.run(@octal_number, line)
     symbol = Regex.run(@symbol, line)
     string_6 = Regex.run(@string_6, line)
@@ -58,10 +51,14 @@ defmodule A940.Tokenizer do
           {:spaces, hd(white_space), hd(white_space)}
 
         decimal_number != nil ->
-          {:number, String.to_integer(hd(decimal_number)), hd(decimal_number)}
+          {:number, decode_decimal(decimal_number), hd(decimal_number)}
 
         octal_number != nil ->
-          {:number, decode_octal(hd(octal_number)), hd(octal_number)}
+          {:number, decode_octal(octal_number), hd(octal_number)}
+
+        number != nil ->
+          {line, number}
+          {:number, decode_number(hd(number), flags), hd(number)}
 
         symbol != nil ->
           {:symbol, hd(symbol), hd(symbol)}
@@ -88,24 +85,20 @@ defmodule A940.Tokenizer do
     new_token = {token_type, token_value}
     size_of_match = String.length(match)
     new_line = String.slice(line, size_of_match..-1//1)
-    all_tokens(new_line, [new_token | token_list])
+    all_tokens(new_line, [new_token | token_list], flags)
   end
+
+  def decode_number(number, flags), do: String.to_integer(number, flags.default_base)
+
+  def decode_decimal(dec), do: String.to_integer(Enum.at(dec, 1))
 
   def decode_octal(oct) do
-    value =
-      cond do
-        String.contains?(oct, "B") -> decode_scaled_octal(oct)
-        true -> String.to_integer(oct, 8)
-      end
+    # oct |> dbg
+    value = String.to_integer(Enum.at(oct, 1), 8)
+    scale_text = Enum.at(oct, 2, "0")
+    scale = if scale_text != "", do: String.to_integer(scale_text), else: 0
 
-    value &&& 0o77777777
-  end
-
-  defp decode_scaled_octal(oct) do
-    oct_length = String.length(oct)
-    base = String.slice(oct, 0..(oct_length - 3)) |> String.to_integer(8)
-    shift = String.slice(oct, (oct_length - 1)..-1//1) |> String.to_integer()
-    base <<< (3 * shift)
+    value <<< (3 * scale) &&& 0o77777777
   end
 
   defp decode_string_6(_v), do: 0
