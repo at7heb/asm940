@@ -9,9 +9,9 @@ defmodule A940.Tokenizer do
   @decimal_number ~r/^(\d+)(D)/
   @octal_number ~r/^([0-7]+)B([0-7]?)/
   @symbol ~r/^[A-Z0-9:]+/
-  @string_6 ~r/^'[^']{1,4}'/
-  @string_8 ~r/^"[^"]+"/
-  @delimiter ~r/^[-+*\/,()=.$_]/
+  @string_6 ~r/^'([^']{0,4})'/
+  @string_long ~r/^'([^']{5,})'/
+  @delimiter ~r/^[-+*\/,()=.$_"]/
   @special ~r/^[;<>?[\]!%&@]/
   @illegal ~r/^[#^]+/
 
@@ -40,7 +40,7 @@ defmodule A940.Tokenizer do
     octal_number = Regex.run(@octal_number, line)
     symbol = Regex.run(@symbol, line)
     string_6 = Regex.run(@string_6, line)
-    string_8 = Regex.run(@string_8, line)
+    string_long = Regex.run(@string_long, line)
     delimiter = Regex.run(@delimiter, line)
     special = Regex.run(@special, line)
     illegal = Regex.run(@illegal, line)
@@ -64,10 +64,10 @@ defmodule A940.Tokenizer do
           {:symbol, hd(symbol), hd(symbol)}
 
         string_6 != nil ->
-          {:string_6, decode_string_6(hd(string_6)), hd(string_6)}
+          {:string_6, decode_string_6(hd(tl(string_6))), hd(string_6)}
 
-        string_8 != nil ->
-          {:string_8, decode_string_8(hd(string_8)), hd(string_8)}
+        string_long != nil ->
+          {:string_long, hd(tl(string_long)), hd(string_long)}
 
         delimiter != nil ->
           {:delimiter, hd(delimiter), hd(delimiter)}
@@ -79,7 +79,7 @@ defmodule A940.Tokenizer do
           {:illegal, hd(illegal), hd(illegal)}
 
         true ->
-          {:fail, 0, 0}
+          {:fail, line, 0} |> dbg
       end
 
     new_token = {token_type, token_value}
@@ -101,6 +101,25 @@ defmodule A940.Tokenizer do
     value <<< (3 * scale) &&& 0o77777777
   end
 
-  defp decode_string_6(_v), do: 0
-  defp decode_string_8(v), do: v
+  @character_code_minimum String.to_charlist(" ") |> hd()
+  @character_code_maximum String.to_charlist("_") |> hd()
+  defp decode_string_6(v) do
+    rv =
+      String.to_charlist(v)
+      |> Enum.reduce(0, fn char, val ->
+        actual =
+          if char >= @character_code_minimum and char <= @character_code_maximum,
+            do: char - 32,
+            else: 0o77777777
+
+        accumulator = val <<< 6 ||| actual
+        {:string6, actual, accumulator}
+        accumulator
+      end)
+
+    {:string6rv, Integer.to_string(rv, 8)} |> dbg
+    {rv, v}
+  end
+
+  # defp decode_string_8(v), do: v
 end

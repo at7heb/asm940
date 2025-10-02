@@ -1,0 +1,686 @@
+1BAS     IDENT   73-01-17  SCRATCH PAGE.  FILE /S1B/
+
+
+*****************************************************
+*                MUST BE LOADED AT  240B.           *
+*                ----                               *
+*****************************************************
+
+*   USER SUPPLIED STORAGE
+* 
+$SICA1 BSS     1
+$SICA2 BSS     1
+$SICA3 BSS     1
+
+$ESCFLG  BSS     1         <0 MEANS ESCAPE DURING EXECUTE          5.10
+$RUNFLG  BSS     1         5.10
+
+$ADJFAC ZRO
+$COUNT  ZRO
+$DFLG   ZRO
+$ERNUM ZRO
+$EXPFLG ZRO
+$EXPONT ZRO
+$SCTMP BSS  1
+$ARRTOP  BSS     1         HIGHEST LOC. USED BY ARRAYS.      HB 72-03-04
+$LLIMIT  BSS     1         LITERAL LIMIT                     HB 72/03/09
+$IOLINK ZRO
+$PAULNK BSS  1
+$IOD    ZRO
+$IOW    ZRO
+$OVFL   ZRO
+$FORTAL  DATA    0                                           [HB 16.06.71]
+$FRESWT  DATA    0
+$IOFMT   DATA    0                                           [HB 16.06.71]
+$OVDGTS ZRO
+$RLIO2  ZRO
+$RLIO4  ZRO
+$RLIO6  ZRO
+$RLIO7  ZRO
+$SIGNFL ZRO
+$SPTR1  ZRO
+$SPTR2  ZRO
+$SPTR3  ZRO
+$SPTR4  ZRO
+$SPTR5  ZRO
+$TEMP1  ZRO 
+$TEMP2  ZRO 
+$TEMP3  ZRO 
+$TFOUR  ZRO
+$TIOD   ZRO
+* 
+*   SCAN TABLE.  TEMPORARY STORAGE.
+* 
+$PLUS   ZRO
+$MINUS  ZRO
+$PERIOD ZRO
+$DDD    ZRO
+$AT     ZRO
+$EEE    ZRO
+$EEEP1  EQU     *
+* 
+*  RETURNS FOR SUBS USING BRM INSTEAD OF SBRM
+* 
+$RLI82  ZRO
+$RLI82A ZRO
+$RLI73   0       0
+$RLI73A  0       0                                           [HB 16.06.71]
+*
+*   EQUALS
+* 
+$DGTCNT EQU     OVDGTS
+$SPACES EQU     RLIO4
+$DEXP   EQU     DFLG
+$IODEXP EQU     SPTR3
+$NCONV  EQU     SPTR5
+$RLIO5  EQU     RLIO6
+$RNDFLG EQU     EXPFLG
+$SIGN2 EQU     SPTR4
+$XMK   BSS     1
+
+*        FOR SUBROUTINES USING BRM* INSTEAD OF SBRM.
+$BRMS    BSS     0         HEB,4.3
+$MODE1   BSS     2
+$RINSL   BSS     2         FOR INSERT LITERAL.                     5.10
+$RTN0    BSS     2
+$RTN1    BSS     2
+$RTN2    BSS     2
+$RTN3    BSS     2
+$RTN4    BSS     2
+$RTN5    BSS     2
+$PTRR    BSS     2         RETURN FOR POINTER HANDLING       HB 71.12.21
+$GCR1    BSS     2         GC RETURN 1.
+$GCR2    BSS     2         GC RETURN 2.                      HB 71.12.21
+$BRME    EQU     *-1
+$BRMA    EQU     *
+$BRML    EQU     BRMS-BRME HEB,4.3
+
+$TEMPX BSS     1
+$CTMP1 BSS     1
+$CTMP2 BSS     1
+$CTMP3 BSS     1
+$CTMP4 BSS     1
+$CTMP5 BSS     1
+
+*                          FOR FORMATS, NEW I/O.
+$FMTSW   BSS     1         <0 MEANS FORMATTING IN EFFECT.
+$CURFOR  BSS     1         CURRENT FORMAT WORD.
+$IOPTR   BSS     1         FORMAT LIST POINTER.
+$IOPTR1  BSS     1         AUXILLIARY FORMAT LIST POINTER.
+$SPCCNT  BSS     1         SPACES PENDING ON CURRENT FILE.
+
+
+*                          TABLES FOR MANY FILES.
+$NFILES  EQU     8         <5.10
+$OFNO    BSS     1         CURRENT OUTPUT FILE NUMBER.
+$IFNO    BSS     1         CURRENT INPUT  FILE NUMBER.
+$HTN     EQU     *-2       TABLE OF FILE HASH VALUES
+$HTND    BES     NFILES    -1 MEANS NOT OPEN,
+*                          OTHERWISE LOCATION IN HASH TABLE.
+$MINFIL  EQU     0
+$MAXFIL  EQU     MINFIL+NFILES+1
+$FILET   BSS     NFILES+2
+$FILTND  BSS     0
+$LPOST   BSS     NFILES+2
+$LPOST1  EQU     LPOST+1
+$SPCCT   BSS     NFILES+2
+$SPCCT1  EQU     SPCCT+1
+$MNFILE  EQU     -NFILES
+$RETFLG  BSS     1         <0 MEANS HAVE GOTTEN (RET)
+$QUESSW  BSS     1         <0 PUT OUT ? AT ACCEPT.                 5.10
+$INPSPC  BSS     1         HOLDS SPACE COUNT ON INPUT             >5.10
+
+$PNTFLG  BSS     1         FLAG FOR CHECKING LISTS (WITH DELIMITERS).
+$PTMP1 BSS     1
+$PTMP2 BSS     1
+$CPYP1   EQU     *
+$STMP  BSS     1
+$CPYP11  EQU     *
+$STMP1 BSS     1
+$CPYP2   EQU     *
+$STMP2 BSS     1
+$CPYP22  EQU     *
+$STMP3 BSS     1
+$STMP4 BSS     1
+
+*        GARBAGE COLLECTOR STORAGE.                          HB 71.12.21
+
+$GCCNT   BSS     1         COUNTER FOR LOOPS.
+$GCT1    BSS     1         TEMP
+$GCT2    BSS     1         TEMP
+$GCFREE  BSS     1         NUMBER OF WORDS FREE AFTER COLLECT.
+$GCREQ   BSS     1         NUMBER OF WORDS REQUIRED BEFORE COLLECT.
+$GCTOP   BSS     1         TOP OF STORE.
+$GCBOT   BSS     1         BOTTOM OF STORE.
+$GCPTRA  BSS     1         POINTER USED FOR LIST TRACING.
+$GCPROC  BSS     1         ADDRESS OF PROCEDURE FOR TRACING.
+$GCRTN   BSS     1         RETURN ADDRESS FOR TRACING FUNCTIONS.
+
+$DEAD    BSS     1         <0 MEANS STORAGE OKAY, =0 MEANS DEAD.
+$BKLEN   BSS     1         TEMP IN BLOCK ALLOCATION.         HB 71.12.21
+$FBFPTR BSS    2
+$NFNBUF BSS    30
+
+$TEMF1 EQU     *+1
+$TEMF2 EQU     *+2
+$TEMF3 EQU     *+3
+$TEMF4 EQU     *+4
+$TEMF5 EQU     *+5
+$TEMFIL EQU    *
+$BUF   BSS     73
+$FNBUF BSS     30
+$TEMEND EQU    *-2
+$TEMPTR BSS    1
+$INFILE        ZRO
+$OUTFILE       ZRO
+$LITTOP BSS    1
+$XCOUNT  ZRO
+$SCOUNT        ZRO
+$GNIUS BSS     1
+$POPCDE BSS    1
+$RELCDE BSS    1
+$ALPCNT BSS    1
+$MM    DATA    0
+$MM1   DATA    0
+$SBASE ZRO
+$NUMB  ZRO
+$DTACTR BSS    1
+$LNHDR BSS     1
+$WTING BSS     1
+$LNSET BSS     1
+$EOLFX BSS     1
+$DTAFLN BSS    1
+$DTMP  BSS     1
+$EOFL  BSS     1
+$THRD  BSS     1
+$GSCAN BSS     1
+$IFFOR BSS     1
+$RECDE BSS     1
+$LETTMP BSS    1
+$MATFLG BSS    1               TBG-2/8/68
+$INPTMP BSS    1
+$KO    BSS     1
+$GMS   BSS     1
+$CCS   BSS     1
+$SSTPTR BSS    1
+$TPTR  BSS     1
+$SETX  BSS     1
+$SST   BSS     20
+$CTRHDR EQU    SST
+$CTR   BSS     1
+$SCBASE BSS    1
+$LLINE BSS     1
+$GTMP  BSS     1
+$GFLN  BSS     1
+$POLPTR BSS    1
+$STKPTR  BSS  1
+$TXT   BSS     1
+$WAIT  BSS     1
+$OWC   BSS     1
+$POLISH EQU    *
+$TEXT  BSS     103
+$CC    EQU     *
+$STACK BSS     50
+$TSTK  EQU     *-2
+$ETXT  BSS     1
+$FLINE BSS     1
+$LPAREN BSS    1
+$RPAREN  BSS   1
+$FNA   BSS     2
+$FNB   BSS     2
+$FNC   BSS     2
+$FND   BSS     2
+$FNE   BSS     2
+$FNF   BSS     2
+$FNG   BSS     2
+$FNH   BSS     2
+$FNI   BSS     2
+$FNJ   BSS     2
+$FNK   BSS     2
+$FNL   BSS     2
+$FNM   BSS     2
+$FNN   BSS     2
+$FNO   BSS     2
+$FNP   BSS     2
+$FNQ   BSS     2
+$FNR   BSS     2
+$FNS   BSS     2
+$FNT   BSS     2
+$FNU   BSS     2
+$FNV   BSS     2
+$FNW   BSS     2
+$FNX   BSS     2
+$FNY   BSS     2
+$FNZ   BSS     2
+$FILNAM BSS    2
+$RPAG  BSS     1
+$BRSL  BSS     1
+$BRSX  BSS     1
+$BRSGN BSS     1
+ARTARR   EQU     4         LENGTH OF NUMERIC ARRAY.          HEB,4.3
+STRARR   EQU     4         LENGTH OF STRING ARRAY
+
+$AST     BSS     STRARR*25
+$ZST     BSS     STRARR
+$ASTINC  EQU     AST-'   A'*4      HEB,4.3
+$AS      BSS     ARTARR*25 RESERVE SPACE FOR MOST
+$ZS      BSS     ARTARR
+$ASINC   EQU     AS-'   A'*4
+$PI  BSS 2
+LONG     EQU     0             FOR SHORT ASSEMBLY.
+         IF      LONG=0
+NLET     EQU     26        NUMBER OF LETTERS
+NSUF     EQU     11        NUMBER OF SUFFIXES.
+$A       BSS     NLET*NSUF*2       TWO WORDS/ENTRY.
+$Z       EQU     *-NSUF*2
+         FRGT    NLET,NSUF,LONG
+         ELSE
+$A   BSS 2
+$A0  BSS 2
+$A1  BSS 2
+$A2  BSS 2
+$A3  BSS 2
+$A4  BSS 2
+$A5  BSS 2
+$A6  BSS 2
+$A7  BSS 2
+$A8  BSS 2
+$A9  BSS 2
+$B   BSS 2
+$B0  BSS 2
+$B1  BSS 2
+$B2  BSS 2
+$B3  BSS 2
+$B4  BSS 2
+$B5  BSS 2
+$B6  BSS 2
+$B7  BSS 2
+$B8  BSS 2
+$B9  BSS 2
+$C   BSS 2
+$C0  BSS 2
+$C1  BSS 2
+$C2  BSS 2
+$C3  BSS 2
+$C4  BSS 2
+$C5  BSS 2
+$C6  BSS 2
+$C7  BSS 2
+$C8  BSS 2
+$C9  BSS 2
+$D   BSS 2
+$D0  BSS 2
+$D1  BSS 2
+$D2  BSS 2
+$D3  BSS 2
+$D4  BSS 2
+$D5  BSS 2
+$D6  BSS 2
+$D7  BSS 2
+$D8  BSS 2
+$D9  BSS 2
+$E   BSS 2
+$E0  BSS 2
+$E1  BSS 2
+$E2  BSS 2
+$E3  BSS 2
+$E4  BSS 2
+$E5  BSS 2
+$E6  BSS 2
+$E7  BSS 2
+$E8  BSS 2
+$E9  BSS 2
+$F   BSS 2
+$F0  BSS 2
+$F1  BSS 2
+$F2  BSS 2
+$F3  BSS 2
+$F4  BSS 2
+$F5  BSS 2
+$F6  BSS 2
+$F7  BSS 2
+$F8  BSS 2
+$F9  BSS 2
+$G   BSS 2
+$G0  BSS 2
+$G1  BSS 2
+$G2  BSS 2
+$G3  BSS 2
+$G4  BSS 2
+$G5  BSS 2
+$G6  BSS 2
+$G7  BSS 2
+$G8  BSS 2
+$G9  BSS 2
+$H   BSS 2
+$H0  BSS 2
+$H1  BSS 2
+$H2  BSS 2
+$H3  BSS 2
+$H4  BSS 2
+$H5  BSS 2
+$H6  BSS 2
+$H7  BSS 2
+$H8  BSS 2
+$H9  BSS 2
+$I   BSS 2
+$I0 BSS 2
+$I1  BSS 2
+$I2  BSS 2
+$I3  BSS 2
+$I4  BSS 2
+$I5  BSS 2
+$I6  BSS 2
+$I7  BSS 2
+$I8  BSS 2
+$I9  BSS 2
+$J   BSS 2
+$J0  BSS 2
+$J1  BSS 2
+$J2  BSS 2
+$J3  BSS 2
+$J4  BSS 2
+$J5  BSS 2
+$J6  BSS 2
+$J7  BSS 2
+$J8  BSS 2
+$J9  BSS 2
+$K   BSS 2
+$K0 BSS 2
+$K1  BSS 2
+$K2  BSS 2
+$K3  BSS 2
+$K4  BSS 2
+$K5  BSS 2
+$K6  BSS 2
+$K7  BSS 2
+$K8  BSS 2
+$K9  BSS 2
+$L   BSS 2
+$L0 BSS 2
+$L1  BSS 2
+$L2  BSS 2
+$L3  BSS 2
+$L4  BSS 2
+$L5  BSS 2
+$L6  BSS 2
+$L7  BSS 2
+$L8  BSS 2
+$L9  BSS 2
+$M   BSS 2
+$M0  BSS 2
+$M1  BSS 2
+$M2  BSS 2
+$M3  BSS 2
+$M4  BSS 2
+$M5  BSS 2
+$M6  BSS 2
+$M7  BSS 2
+$M8  BSS 2
+$M9  BSS 2
+$N   BSS 2
+$N0  BSS 2
+$N1  BSS 2
+$N2  BSS 2
+$N3  BSS 2
+$N4  BSS 2
+$N5  BSS 2
+$N6  BSS 2
+$N7  BSS 2
+$N8  BSS 2
+$N9  BSS 2
+$O   BSS 2
+$O0  BSS 2
+$O1  BSS 2
+$O2  BSS 2
+$O3  BSS 2
+$O4  BSS 2
+$O5  BSS 2
+$O6  BSS 2
+$O7  BSS 2
+$O8  BSS 2
+$O9  BSS 2
+$P   BSS 2
+$P0  BSS 2
+$P1  BSS 2
+$P2  BSS 2
+$P3  BSS 2
+$P4  BSS 2
+$P5  BSS 2
+$P6  BSS 2
+$P7  BSS 2
+$P8  BSS 2
+$P9  BSS 2
+$Q   BSS 2
+$Q0  BSS 2
+$Q1  BSS 2
+$Q2  BSS 2
+$Q3  BSS 2
+$Q4  BSS 2
+$Q5  BSS 2
+$Q6  BSS 2
+$Q7  BSS 2
+$Q8  BSS 2
+$Q9  BSS 2
+$R   BSS 2
+$R0  BSS 2
+$R1  BSS 2
+$R2  BSS 2
+$R3  BSS 2
+$R4  BSS 2
+$R5  BSS 2
+$R6  BSS 2
+$R7  BSS 2
+$R8  BSS 2
+$R9  BSS 2
+$S   BSS 2
+$S0  BSS 2
+$S1  BSS 2
+$S2  BSS 2
+$S3  BSS 2
+$S4  BSS 2
+$S5  BSS 2
+$S6  BSS 2
+$S7  BSS 2
+$S8  BSS 2
+$S9  BSS 2
+$T   BSS 2
+$T0  BSS 2
+$T1  BSS 2
+$T2  BSS 2
+$T3  BSS 2
+$T4  BSS 2
+$T5  BSS 2
+$T6  BSS 2
+$T7  BSS 2
+$T8  BSS 2
+$T9  BSS 2
+$U   BSS 2
+$U0  BSS 2
+$U1  BSS 2
+$U2  BSS 2
+$U3  BSS 2
+$U4  BSS 2
+$U5  BSS 2
+$U6  BSS 2
+$U7  BSS 2
+$U8  BSS 2
+$U9  BSS 2
+$V   BSS 2
+$V0  BSS 2
+$V1  BSS 2
+$V2  BSS 2
+$V3  BSS 2
+$V4  BSS 2
+$V5  BSS 2
+$V6  BSS 2
+$V7  BSS 2
+$V8  BSS 2
+$V9  BSS 2
+$W   BSS 2
+$W0  BSS 2
+$W1  BSS 2
+$W2  BSS 2
+$W3  BSS 2
+$W4  BSS 2
+$W5  BSS 2
+$W6  BSS 2
+$W7  BSS 2
+$W8  BSS 2
+$W9  BSS 2
+$X   BSS 2
+$X0 BSS 2
+$X1  BSS 2
+$X2  BSS 2
+$X3  BSS 2
+$X4  BSS 2
+$X5  BSS 2
+$X6  BSS 2
+$X7  BSS 2
+$X8  BSS 2
+$X9  BSS 2
+$Y   BSS 2
+$Y0  BSS 2
+$Y1  BSS 2
+$Y2  BSS 2
+$Y3  BSS 2
+$Y4  BSS 2
+$Y5  BSS 2
+$Y6  BSS 2
+$Y7  BSS 2
+$Y8  BSS 2
+$Y9  BSS 2
+$Z   BSS 2
+$Z0  BSS 2
+$Z1  BSS 2
+$Z2  BSS 2
+$Z3  BSS 2
+$Z4  BSS 2
+$Z5  BSS 2
+$Z6  BSS 2
+$Z7  BSS 2
+$Z8  BSS 2
+$Z9  BSS 2
+         ENDF
+$LIT   EQU     17776B
+$RTMP1 EQU     TEXT+1
+$RTMP2 EQU     TEXT+2
+$RTMP3 EQU     TEXT+3
+$RTMP4 EQU     TEXT+4
+$RTMP5 EQU     TEXT+5
+$RTMP6 EQU     TEXT+6
+$RTMP7 EQU     TEXT+7
+$RTMP8 EQU     TEXT+8
+$RTMP9 EQU     TEXT+9
+$RTMP10 EQU    TEXT+10
+$RTMP11 EQU    TEXT+11
+$RTMP12 EQU    TEXT+12
+$RTMP13 EQU    TEXT+13
+$RTMP14 EQU    TEXT+14
+$RTMP15 EQU    TEXT+15
+$RTMP16 EQU    TEXT+16
+$RTMP17 EQU    TEXT+17
+$RTMP18 EQU    TEXT+18
+$RTMP19 EQU    TEXT+19
+$RTMP20 EQU    TEXT+20
+$RTMP21 EQU    TEXT+21
+$RTMP22  EQU     TEXT+22                                     [HB 22.06.71]
+$RTMP23 EQU    TEXT+23
+$RTMP24  EQU     TEXT+24                                     [HB 22.06.71]
+$RTMP25 EQU    TEXT+25
+$RTMP26 EQU    TEXT+26
+$RTMP27 EQU    TEXT+27         **KEEP HERE AND BELOW FOR WRITING
+$RTMP28 EQU    TEXT+28         SYMBOLIC FOR SIC
+$SYMLN BSS     1
+$HOLD1 BSS     1
+$HOLD2 BSS     1
+$SNFU  BSS     2
+$SNFT  BSS     2
+$WKX   BSS     1
+$FADG2 BSS     1               MUST FOLLOW WKX
+$LGF1  BSS     2
+$LGF11 EQU     LGF1+1
+$AH    EQU     SNFU
+$AL    EQU     SNFU+1
+$PQ    EQU     SNFT
+$WKA   EQU     SNFT+1
+$WKB   EQU     FADG2
+$EXF1  EQU     SNFU
+$EXF3  EQU     SNFT
+$EXF4  EQU     WKX
+$EXF41 EQU     FADG2
+$LGF4  EQU     SNFU
+$LGF3  EQU     SNFT
+$LGF2  EQU     WKX
+$LGF22 EQU     FADG2
+$ATF1  EQU     SNFU
+$ATF11 EQU     SNFU+1
+$ATF2  EQU     SNFT
+$FADG4 EQU     WKX
+$FADG6 EQU     LGF1
+$MADCH BSS     1               TBG-2/S7/68--SBRM MADCHK ADDR STORAGE.
+$MATT2 BSS     1
+$BUF10 EQU     BUF+10
+$BUF11 EQU     BUF+11
+$BUF12 EQU     BUF+12
+$BUF13 EQU     BUF+13
+$BUF14 EQU     BUF+14
+$BUF15 EQU     BUF+15
+$BUF16 EQU     BUF+16
+$BUF17 EQU     BUF+17
+$BUF18 EQU     BUF+18
+$BUF19 EQU     BUF+19
+$BUF20 EQU     BUF+20
+$BUF21 EQU     BUF+21
+$BUF22 EQU     BUF+22
+$BUF23 EQU     BUF+23
+$BUF24 EQU     BUF+24
+$BUF25 EQU     BUF+25
+$BUF26 EQU     BUF+26
+$BUF27 EQU     BUF+27
+$BUF28 EQU     BUF+28
+$BUF29 EQU     BUF+29
+$BUF31 EQU     BUF+31
+$BUF30 EQU     BUF+30
+$BUF32 EQU     BUF+32
+$IOP   BSS     1               TBG 2/27/68
+$OOP   BSS     1               TBG-2/27/68
+$MATT3 BSS     1
+$MATT4 BSS     1
+$VECT2 BSS     1
+$MATPAR BSS    1
+$DOPTR   BSS     1         POINTER TO NEXT FOR-NEXT LOC.
+$CHFLG   BSS     1         <0 IF CHAINING.
+$RRLBL   BSS     1         RUNTIME RELABELING   FOR 4.02.
+$RELABL        BSS     1
+$XPAGE BSS     1
+$XPAGE1        BSS     1
+
+$BRS21 ZRO     BRSL            REPLACES MISSING BRS 21
+       STX     BRSX
+       STA     BRSGN           SAVE ORIGINAL SIGN OF NUMBER
+       STE
+BRS21A XAB
+       EOR     MONE
+       ADD     =1
+       XAB
+       EOR     MONE
+       ADC     ZERO
+       NOD     48
+       LDE
+       LDX     BRSX
+       SKA     =4B7            SKIP IF POSITIVE
+       BRU     *+2             TEST FURTHER IF NEGATIVE
+       BRR*    BRS21
+       SKN     BRSGN           TEST ORIGINAL SIGN OF NUMBER
+       BRR*    BRS21
+       STE                     PATHOLOGICAL CASE: DO OVER
+       RSH     1               RESCALE NUMBER
+       EAX     1,2
+       BRU     BRS21A
+
+$EUPAGE EQU    *+2             KLUDGE TO SKIP OVER BRS21 LITERALS
+
+       NOLIST EXT,GO
+
+       END

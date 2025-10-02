@@ -15,6 +15,7 @@ defmodule A940.Conductor do
     end
     |> String.upcase()
     |> String.split("\n")
+    |> Enum.map(&String.trim_trailing(&1, "\r"))
     |> Enum.map(&String.trim_trailing(&1, " "))
     |> process()
   end

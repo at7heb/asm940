@@ -1,0 +1,886 @@
+3BAS     IDENT   73-04-03--FIO PACKAGE.  TBG & HEB.  FILE /S3B/
+*
+* INTERNAL TO STRING CONVERSION
+*
+ISC    POPD    13500000B,2
+$ISCN  STX     SICA3
+       STP    SICA1
+       LDA     0
+       STA     IOLINK
+       CLA
+       STA     COUNT
+       STA     FRESWT
+       STA     TFOUR
+       STA     ERNUM
+       STA     OVDGTS
+       SBRM     GETFMT
+       LDA     IOFMT
+       SKG     ZERO
+       BRU     IOBOL
+         SKE     SEVEN     SEE IF STRING VAR.                HB 72/01/14
+         BRU     *+2       NO.
+         BRU     IOSTR     YES, GO PROCESS                   HB 72/01/14
+       LDP     SICA1
+       STE
+       NOD     48
+       LDE
+       STP     SICA1
+       STP     SPTR1
+         LDB     SICA3     GET THE FORMAT WORD.              [HB 22.06.71]
+         SKN     SICA1     TEST THE VALUE FOR POSITIVE OR NEGATIVE.
+         BRU     ISCP      IT IS POSITIVE.
+         LDA     THIRTEEN  THE SIGN CHARACTER WILL DEFINITELY BE '-'.
+         STA     SIGN2
+         BRU     NFRFMT    THE FORMAT IS PROBABLY CORRECT.
+ISCP     CLA               ASSUME SPACE IS PUT OUT.
+         SKB     XPSGN     TEST IF ASSUMPTION WAS CORRECT.         5.10
+         LDA     ELEVEN    IT WASN'T, GET TRUE PLUS SIGN.
+         SKB     XSGN      SEE IF IT WAS VALID TO LOOK AT XPSGN.   5.10
+         BRU     *+2       YES, IT WAS.
+         LDA     MONE      NO, IT WASN'T.
+         STA     SIGN2
+         BRU     NFRFMT                                      [HB 22.06.71]
+
+IOFREE LDB     MONE            SET ZERO SUPPRESS FLAG
+       STB     FRESWT
+       LDA     IOD
+       SKE     ZERO            TEST FOR G FORMAT - NON-ZERO FIELD WIDTH
+       BRU     GFMT
+       LDA     SEVEN
+       STA     IOD
+       LDA     THIRTEEN        SET FORMAT FOR FREE FORM
+       STA     IOW
+       SBRM     RNDEXP          CALLS ROUND SUBROUTINE
+       LDP     SPTR1
+       STP     SICA1
+       LDA     IODEXP          EXAMINE MAGNITUDE OF THE NUMBER
+       SKG     FIVE
+       SKG     MTWO
+       BRU     IOEXPB
+         EOR     MONE      PUSHED IOD THE RIGHT DIRECTION    [HB 24.06.71]
+       ADM     IOD
+       BRU     IOFCON
+         
+GFMT   CLA
+       STA     IOFMT
+       STA     FRESWT
+       SBRM    RNDEXP
+       LDP     SPTR1
+       STP     SICA1
+       LDA     IOW
+       SUB     IOD
+       SUB     THREE
+       STA     RNDFLG
+       LDA     IODEXP
+       SKG     RNDFLG          TEST FOR W-D-2>EXP>-1
+       SKG     MTWO
+         BRU     IOEXPS                                      [HB 16.06.71]
+       BRU     IOFCON
+         
+NFRFMT LDX     IOFMT           NOT FREE FORMAT
+       BRU     *,2
+       BRU     IOINT       1 = INTEGER.
+       BRU     IOEXP       2 = EXPONENTIAL, RIGHT JUSTIFIED.
+       BRU     IOFCON      3 = FIXED POINT, RIGHT JUSTIFIED.
+       BRU     IOEXPS      4 = EXPONENTIAL, LEFT JUSTIFIED.
+       BRU     IOFCNS      5 = FIXED POINT, LEFT JUSTIFIED.
+         BRU     IOFREE    6 = FREE FORMAT, LEFT JUSTIFIED   HB 72/01/14
+         
+IOFCNS LDA     MONE
+       STA     FRESWT
+IOFCON SBRM    RNDFI           F CONVERSION
+       LDA     MTWO
+       SUB     IOD             CALCULATE NUMBER OF SPACES TO OUTPUT
+       SKE     MTWO
+       SUB     ONE
+         SKN     SIGN2     GET COUNTS RIGHT FOR SIGN         [HB 23.06.71]
+         BRU     *+2
+         ADD     ONE                                         [HB 23.06.71]
+       SKN     IODEXP
+         BRU     *+2       FASTER THAN   SUB   ONE           [HB 23.06.71]
+       ADD     ONE
+       ADD     IOW
+       SKN     IODEXP
+       SUB     IODEXP
+       SKA     B00T00
+ERR4   BRU     FLDSHT          ERROR: SPECIFIED FIELD IS TOO SHORT
+       SKG     ZERO
+       BRU     FCON2
+       SBRM     SPCOUT
+FCON2  LDA     SIGN2
+         SKE     MONE      FOR SIGN DIDDLING                 [HB 22.06.71]
+       SBRM     CHROUT
+FCON3  LDA     IODEXP
+       SKG     MONE
+       BRU     FCON4           NO DIGITS BEFORE DECIMAL POINT
+       ADD     ONE             OUTPUT DIGITS BEFORE DECIMAL POINT
+       CNA
+       CAX
+       SBRM     GETDGT
+       SBRM     CHROUT
+       BRX     *-2
+FCON4    LDA     FOURTEEN  OPTIONAL DECIMAL POINT ELIMINATED.
+       SBRM     CHROUT
+FCON6  LDA     IODEXP          CALCULATE NO. OF ZEROES AFTER DEC. PT.  
+       ADD     ONE
+       CAX
+       SKG     MONE
+       BRU     FCON7
+FCON8  SKR     IOD             OUTPUT DIGITS AFTER DECIMAL POINT
+       BRU     *+2
+       BRU     ISCEND
+       SBRM     GETDGT
+       SKN     FRESWT
+       BRU     FCON9
+       SKE     SIXTEEN
+       BRU     *+3
+       MIN     COUNT
+       BRU     FCON8
+       STA     TEMP1
+       SKR     COUNT
+       BRU     *+4
+       MIN     COUNT
+       LDA     TEMP1
+       BRU     FCON9
+       LDA     SIXTEEN
+       SBRM    CHROUT
+       BRU     *-7
+FCON9  SBRM    CHROUT
+       BRU     FCON8
+FCON7  LDA     SIXTEEN         OUTPUT ZEROS AFTER DECIMAL PT.
+       SKR     IOD
+       SBRM     CHROUT
+       BRX     *-2
+       BRU     FCON8
+IE1    LDX     ERNUM
+         LDP*    IOLINK    RETURN THE POINTERS IN A, B.      [HB 21.06.71]
+       BRR     IOLINK
+         
+IOEXPB SKG     MONE
+       BRU     IOEXP
+IOEXPS LDA     MONE
+       STA     TFOUR
+         LDA     IOW       COMPUTE DIGITS BEFORE DECIMAL PT. [HB 11.06.71]
+         SUB     IOD
+*        SKE     IOW       INCLUDE WHEN D=0 DOESN'T PUT OUT '.'.
+*        SUB     ONE
+*        SUB     FIVE
+         SKN     SIGN2     ACCOUNT FOR SIGNS.
+         SUB     ONE       (SUBTRACT ONE MORE WHEN THERE IS A SIGN)
+         SUB     FIVE
+         STA     DGTCNT
+         SKA     B00T00
+         BRU     ERR2      NOT ENOUGH ROOM.
+         STA     DGTCNT                                      [HB 11.06.71]
+IOEXP  SBRM    RNDEXP
+       LDA     IOW
+EXP1   SUB     IOD
+       SKG     FIVE
+ERR2   BRU     EXPSRT          ERROR: SPECIFIED FIELD IS TOO SHORT
+       SUB     SIX
+         SKN     TFOUR     NO LEADING SPCS IF LEFT JUSTIFIED [HB 11.06.71]
+       SKG     ZERO
+       BRU     EXP2
+       SBRM     SPCOUT
+EXP2   LDA     MONE            ADJUST EXPONENT FOR NO DIGITS BEFORE PT.
+       SKN     IODEXP
+       LDA     ONE
+       ADM     DEXP
+       LDA     SIGN2            OUTPUT SIGN OF NUMBER
+         SKE     MONE      FOR SIGN DIDDLING                 [HB 22.06.71]
+       SBRM     CHROUT
+EXP3   SKN     TFOUR           CHECK FOR IO TYPE 4
+       BRU     EXP6            NO - OUTPUT NORMAL EXPONENTIAL FORM
+*
+*  OUTPUT EXPONENTIAL FORM WITH THE NUMBER OF DIGITS BEFORE THE
+*  DECIMAL POINT GIVEN BY IOW-IOD-6.                         [HB 11.06.71]
+* 
+EXP3A    SKR     DGTCNT    CHECK FOR ALL LEADING DIGITS OUT  [HB  10.06.71]
+       BRU     *+2             NOT DONE
+       BRU     EXP6
+       LDA     ONE
+       SKN     IODEXP          ADJUST EXPONENT
+       LDA     MONE
+       ADM     DEXP
+       SKN     DEXP            CHECK FOR SIGN CHANGE IN EXPONENT
+       BRU     *+5             NO CHANGE
+       LDA     MONE            
+       STA     IODEXP          CHANGE SIGN OF EXPONENT
+       CNA 
+       STA     DEXP            CHANGE EXPONENT TO +1
+       SBRM    GETDGT
+       SBRM    CHROUT          OUTPUT DIGIT
+         BRU     EXP3A                                       [HB  10.06.71]
+EXP6   LDA     FOURTEEN        OUTPUT DECIMAL POINT
+       SBRM     CHROUT
+EXP4   SKR     IOD
+       BRU     EXP5
+       LDA     Q32
+       SKR     FORTAL
+       LDA     Q37
+       SBRM     CHROUT          OF 'E'. BY D. JOHNSON. MAY 27, 1966
+       CLA
+       SKE     DEXP            MAKE SURE ZERO EXP. HAS POSITIVE SIGN
+       BRU     *+2
+       STA     IODEXP
+       LDA     THIRTEEN
+       SKN     IODEXP
+       SUB     TWO
+       SBRM     CHROUT
+EXPOUT LDA     DEXP            OUTPUT EXPONENTS
+       RSH     23
+       DIV     TEN
+       CBX
+       SKN     FORTAL
+       BRU     *+3
+       SKG     ZERO            CHECK FOR LEADING ZERO
+       BRU     *+3
+       ADD     SIXTEEN
+       SBRM     CHROUT
+       CXA
+       ADD     SIXTEEN
+       SBRM     CHROUT
+       BRU     ISCEND
+EXP5   SBRM     GETDGT          OUTPUT DIGITS AFTER DECIMAL PT.
+       SKN     FRESWT
+       BRU     EXP4-1
+       SKE     SIXTEEN
+       BRU     *+3
+       MIN     COUNT
+       BRU     EXP4
+       STA     TEMP1
+       SKR     COUNT
+       BRU     *+4
+       MIN     COUNT
+       LDA     TEMP1
+       BRU     EXP4-1
+       LDA     SIXTEEN
+       SBRM    CHROUT
+       BRU     *-7
+         
+* 
+*  OUTPUT OCTAL
+* 
+IOBOL  LDB     SICA1
+       CLA
+       LCY     3
+       ADD     SIXTEEN
+       SBRM    CHROUT
+       LDP     SICA1
+       LSH     3
+       STP     SICA1
+       BRU     IOBOL
+
+
+IOSTR    LDA     IOW       GET WIDTH OF FIELD                HB 72/01/14
+         RSH     5         GET TOP FIVE BITS OF WIDTH TOO         <5.10
+         LDA     IOD
+         LSH     5         >5.10
+         CNA               TO PUT OUT PROPER NUMBER OF STRING
+         CAX               CHARACTERS.
+IOSTR1   GCI     SICA1     TRY FOR STRING CHARACTER
+         CLA               PUT OUT SPACES FOR EXTRA WIDTH
+         WCI*    IOLINK    PUT OUT
+         BRX     IOSTR1            (WIDTH) CHARACTERS.
+         BRU     ISCEND    RETURN WHEN DONE.                 HB 72/01/14
+         
+EXPSRT LDA     TWO             ACTION TAKEN FOR FIELD TOO SHORT
+       STA     ERNUM           REDUCE IOD IF POSSIBLE
+       LDA     OVFL
+       SKG     ZERO
+       BRU     *+6
+       LDA     TEN
+         WCI*    IOLINK                                      [HB 20.06.71]
+       SKR     IOW
+       BRU     *+2
+       BRU     IE1
+       LDA     IOW
+       SUB     SIX
+       STA     IOD
+       SKG     MONE
+       BRU     *+2
+       BRU     EXP2
+       CLA
+       STA     IOD
+       BRU     EXP2
+         
+IOINT    CLA               INTEGER FORMAT.  SET IOD TO ZERO. [HB 71.07.21]
+         STA     IOD
+         SBRM    RNDFI     ROUND THE NUMBER, GET THE EXPONENT.
+         LDA     IODEXP
+         SKN     IODEXP    SEE IF -1<ROUNDED NUMB<1
+         BRU     *+4
+         CLAB              IT IS, SET IT AND THE
+         STP     SICA1     EXPONENT TO ZERO.
+         STA     IODEXP
+         SUB     IOW       COMPUTE NUMBER OF LEADING SPACES.
+         EOR     MONE
+         SKN     SIGN2     ACCOUNT FOR SIGN
+         SUB     ONE
+         SKG     MONE      SEE IF FIELD IS BIG ENOUGH.
+         BRU     FLDSHT    IT IS NOT.
+         SBRM    SPCOUT    PUT OUT THE LEADING SPACES.
+         LDA     SIGN2     AND THE SIGN
+         SKE     MONE
+         SBRM    CHROUT
+         LDA     MONE
+         SUB     IODEXP    NOW PUT OUT THE APPROPRIATE NUMBER
+         CAX               OF DIGITS.
+         SBRM    GETDGT
+         SBRM    CHROUT
+         BRX     *-2       LOOP A LOT.
+         BRU     ISCEND    AND EXIT.                         [HB 71.07.21]
+         
+SPCOUT ZRO     EEE             INSERT SPACES BEFORE OR AFTER NUMBER
+         SKG     ZERO      GUARANTEE SOME TO PUT OUT         [HB 71.07.21]
+         BRR     EEE                                         [HB 71.07.21]
+       CNA
+         LDB     IOFMT     BETTER TEST                       [HB 16.06.71]
+         SKB     MFOUR     SAME AS  SKLE  =3.                      5.10
+         BRR     EEE
+         ADM     IOW       UPDATE THE WIDTH (IMPORTANT)
+         AXC                                                 [HB 16.06.71]
+         WCI*    IOLINK                                      [HB 20.06.71]
+       BRX     *-1
+       BRR*    SPCOUT
+
+
+
+FLDSHT LDA     FOUR
+       STA     ERNUM
+       LDA     OVFL
+       SKG     ZERO
+       BRU     FCON2
+       LDA     TEN
+         WCI*    IOLINK                                      [HB 20.06.71]
+       SKR     IOW
+       BRU     FCON2
+       BRU     IE1
+
+
+CHROUT ZRO     EEE             OUTPUT CHARACTERS OF THE NUMBER
+*       SKN     TFOUR              ****DELETED****           [HB 16.06.71]
+       SKR     IOW
+       BRU     *+2
+       BRU     IE1
+         WCI*    IOLINK                                      [HB 20.06.71]
+       BRR*    CHROUT
+
+
+GETDGT ZRO     EEE            GET NEXT DECIMAL DIGIT CONVERSION
+       LDP    SICA1              OF THE NUMBER IS SICA1,SICA2
+       LRSH    2
+       XAB
+       ADD     SICA2  
+       XAB
+       ADC     SICA1  
+       STP    SICA1
+       LRSH    19
+       ADD     SIXTEEN
+       XMA     SICA1  
+       LDB     SICA2  
+       ETR     B05T23
+       LSH     3
+       XMA     SICA1  
+       STB     SICA2  
+       BRR*    GETDGT
+         
+OUTSET ZRO     DDD             OUTSET MULTIPLIES THE NUMBER IN A,B
+*                              TEN OR TENTH SUCCESSIVELY, UNTIL THE
+*                              BINARY EXPONENT IS LEQ ZRO AND  GTR
+*                              -4. THE DECIMAL EXPONENT OF THE NUMBER
+*                              IS  OBTAINED
+       LDP    SICA1
+       SKE     ZERO
+       BRU     OS1
+       CLB
+       STB     DEXP
+       BRU     CNVDON+3
+OS1    SKN     SICA1
+       BRU     OS2
+       SBRM    BRS21
+       STP    SICA1
+       STP    SPTR1
+OS2    LSH     39
+       LDX     MONE
+       SKG     ZERO            EXAMINE SIGN OF BINARY EXPONENT
+       LDX     ONE
+       STX     DEXP
+       STX     IODEXP
+         EAX     RLIO9         ADDRESS OF FLOATING 1/10      [HB 11.06.71]
+       SKA     B00T00
+         EAX     RLIO8         ADDRESS OF FLOATING 10        [HB 11.06.71]
+       STX     NCONV
+       LDP    SICA1
+       STE
+       NOD     38
+ADJUST XXA
+       LSH     3
+       RSH     3
+       SKG     ZERO
+       SKG     MFOUR           BINARY EXPONENT IS NOT LEQ 0 AND GTR -4
+       BRU     ADJ1
+CNVDON CNA                     CONVERSION DONE
+       XXA
+       LRSH    1,2
+       STP    SICA1
+       LDA     DEXP
+       SKN     IODEXP
+       CNA
+       XMA     IODEXP
+       STA     PLUS
+       BRR*    OUTSET
+ADJ1   XXA
+       STX     EXPONT
+       LDX     NCONV
+       SBRM     DPMRIO          MULTIPLY BY 10 OR 1/10
+       MIN     DEXP
+       BRU     ADJUST
+         
+DPMRIO ZRO     EEE             THIS IS A MULTIPLY ROUTINE FOR 48 BIT
+*                              MANTISSA WITH THE EXPONENT IN A 3RD
+*                              WORD. THE MLTIER IS IN A,B WITH THE
+*                              EXPONENT IN EXPONT. THE MLTCND IS IN
+*                              3 WORDS POINTED TO BY X. THE PRODUCT
+*                              IS RETURNED IN A,B,X
+       STA     TEMP1
+       BAC
+       RCY     2
+       MUL     0,2
+       STA     TEMP2
+       LDA     1,2
+       LRSH    2
+       MUL     TEMP1
+       ADD     TEMP2
+       MUL     TWO
+       STB     TEMP2
+       XMA     TEMP1
+       MUL     0,2
+       XAB
+       ADD     TEMP2
+       XAB
+       ADC     TEMP1
+       STA     TEMP3
+       LDA     2,2
+       ADD     EXPONT
+       CAX
+       LDA     TEMP3
+       NOD     38
+       BRR*    DPMRIO
+         
+* 
+*  ROUND NUMBER
+* 
+RNDEXP ZRO     AT
+       LDA     MONE
+       BRU     ROUND
+RNDFI  ZRO     AT
+       CLA
+ROUND  STA     RNDFLG
+       SBRM    OUTSET
+       LDB     SICA2
+         COPY    B,E       CLEAR EXPONENT OF B.              [HB 11.06.71]
+       STB     SICA2
+       LDA     MTWO
+       SUB     IOD
+       SKN     RNDFLG
+       SUB     IODEXP
+         SKN     TFOUR     TREAT THIS SPECIALLY              [HB 11.06.71]
+         BRU     *+3
+         ADD     ONE       INCLUDE  IOD  COUNT               [HB 16.06.71]
+         SUB     DGTCNT                                      [HB 11.06.71]
+       SKG     MQ12
+       LDA     MQ12
+       CAX
+       SBRM    GETDGT
+       BRX     *-1
+       SKG     Q20
+       BRU     RND6
+       LDA     IODEXP
+       SKN     RNDFLG
+       CLA
+         SKN     TFOUR     TREAT TYPE 4 SPECIALLY            [HB 11.06.71]
+         BRU     *+3                                         [HB 16.06.71]
+         ADD     ONE                                         [HB 16.06.71]
+         SUB     DGTCNT                                      [HB 11.06.71]
+RND5   SUB     IOD
+         SUB     ONE       FOR ROUNDING.                     [HB 11.06.71]
+       SKE     ZERO
+       BRU     RND2
+       LDP     RLIO21
+RND1   FAD     SPTR1
+       STP     SICA1
+RNDONE SBRM    OUTSET
+       LDB     SICA2
+         COPY    B,E       CLEAR EXPONENT OF B.              [HB 11.06.71]
+       STB     SICA2
+       SKN     RNDFLG
+       BRR*    RNDFI
+       BRR*    RNDEXP
+RND6   LDP     SPTR1
+       BRU     RNDONE-1
+RND2   SKG     ZERO
+       BRU     RND3
+       CNA
+         CAX                                                 [HB 11.06.71]
+       LDP     RLIO21
+       FMP     RLIO18
+       BRX     *-1
+       BRU     RND1
+RND3   CAX
+       LDP     RLIO21
+       FMP    RLIO19
+       BRX     *-1
+       BRU     RND1
+
+
+*              CONS FOR ROUND
+RLIO18   DATA    24B6,4               10.0.                  [HB 11.06.71]
+RLIO19   DATA    31463146B,31463775B  .1                     [HB 11.06.71]
+RLIO20 EQU     RLIO19
+RLIO21   DATA    24B6,3               5.0 FLOATING.          [HB 16.06.71]
+         
+*
+* STRING TO INTERNAL CONVERSION
+*
+SIC    POPD    114B5,2
+$SICN  LDA     0
+       STA     IOLINK  
+       LDP*   IOLINK
+         STP     STMP3     5.12
+       CXA
+       LDB     BRU80
+       SKA     FOUR
+       LDB     BRU79
+       STB     RLI82A
+       CLAB
+       STA     COUNT
+       STA     ERNUM
+       STP    SPTR1
+       STP    SICA1
+       STA     RLIO7
+       STA     DGTCNT
+       STA     RLIO2           CORRECTION. D. JOHNSON. MAY 27, 1966
+       STA EXPONT
+       LDA     MONE
+       STA     RLIO4
+       STA     RLIO5
+       STA     EXPFLG
+       STA     DFLG
+       STA     SIGNFL
+RLI1   BRM     RLI82           GET ONE CHARACTER FROM STRING
+       BRU     RLI3     STRING EXHAUSTED
+       SKG     ZERO
+       BRU     RLI1
+       LDB     MONE
+       SKG     Q25
+       SKG     FIFTEEN
+       BRU     RLI2
+       MIN     SIGNFL
+       STA     TEMP1
+       MIN     DGTCNT
+       LDA     DGTCNT
+       SKG     TWELVE
+       BRU     *+2
+       BRU     RLI11
+       SKN     EXPFLG
+       BRU     RLI10
+       SKN     DFLG
+       BRU     RLI24
+RLI23  LDA TEMP1
+       SBRM    RLITEN
+       BRU     RLI1
+RLI11  SKN     DFLG
+       BRU     RLI1
+       MIN     EXPONT
+       BRU     RLI1
+RLI2   SKE     MBCH
+       BRU     *+4
+       BRM     RLI82
+       BRU     RLI3
+       BRU     RLI1
+       SKE     Q37
+       BRU     *+2
+       BRU     RLEX
+       SKE     Q32
+       BRU     *+2
+       BRU     RLEX
+         SKE     =105B     LOWER CASE E                      [HB 23.06.71]
+         BRU     *+2
+         BRU     RLEX                                        [HB 23.06.71]
+       SKE     FOURTEEN
+       BRU     *+2
+       BRU     RLPD
+       SKN     SIGNFL
+       BRU     RLERR
+       SKE     ELEVEN
+       BRU     *+2
+       BRU     RLPM2
+       SKE     THIRTEEN
+       BRU     RLERR
+       SKN     EXPFLG
+       BRU     *+3
+       MIN     RLIO4
+       BRU     RLPM2
+       MIN     RLIO5
+RLPM2  MIN     SIGNFL
+       BRU     RLI1
+RLEX   SKN     EXPFLG
+       BRU     RLERR
+       SKR     DGTCNT
+       BRU     *+3
+       LDA     ONE
+       STA     SICA2
+       MIN     EXPFLG
+       STB     SIGNFL
+       CLA
+       STA     DGTCNT
+       BRU     RLI1
+RLPD   SKN     DFLG
+       BRU     RLERR
+       MIN     DFLG
+       MIN     SIGNFL
+       BRU     RLI1
+RLI24  LDA TEMP1
+       SKE     SIXTEEN         CHECK FOR INSIGNIFICANT ZERO
+       BRU     RLI25           NO
+       MIN     COUNT           YES - INCREMENT COUNT
+       BRU     RLI1
+RLI24A LDA     SIXTEEN
+       SBRM    RLITEN
+RLI25  MIN     RLIO2           INCREASE DIGIT COUNT
+       SKR     COUNT           ANY ZEROS BEFORE NUMBER
+       BRU     RLI24A          YES
+       MIN     COUNT           NO - SET COUNT TO ZERO
+       BRU     RLI23
+RLERR  LDA     SIX
+       STA     ERNUM
+       BRU     RLI1
+RLI10  LDA     TEMP1
+       SUB     SIXTEEN
+       XMA     RLIO7
+       MUL     TEN
+       LSH     23
+       ADM     RLIO7
+       BRU     RLI1
+         
+*
+*  INPUT FOR THREE CHARACTERS PER WORD
+*
+$RLI80 GCI*    IOLINK
+       BRR     RLI82
+       MIN     RLI82
+       BRR     RLI82
+*  INPUT FOR ONE CHARACTER PER WORD
+* 
+$RLI79  XXB 
+       EAX*    IOLINK          LOAD X WITH ADDRESS OF POINTERS
+       LDA     1,2
+       SKG     0,2             CHECK FOR GREATER THAN END POINTER
+       BRU     RLI81
+       MIN     0,2             INCREMENT POINTER BY ONE
+       MIN     RLI82           RETURN TO CALL PLUS TWO
+       LDX     0,2
+       LDA     0,2             LOAD CHARACTER
+RLI81  XXB 
+       BRR     RLI82
+RLI3   LDX     Q47
+       LDP    SICA1              FLOAT NUMBER
+       NOD     47
+       LDE
+       STP     SICA1
+       LDA     RLIO7
+       SKN     RLIO5
+       CNA
+       SUB     RLIO2
+       ADD     EXPONT
+       LDX     ARLIO8
+       SKG      ZERO
+       LDX     ARLIO10
+       STX     ADJFAC  
+       SKG      ZERO
+       CNA
+       STA     COUNT
+       LDP    SICA1
+       SKR     COUNT
+       BRU     *+2
+       BRU     RLRTN
+       STE 
+RLI31  STX     EXPONT
+       LDX     ADJFAC
+       SBRM    DPMRIO
+*                              THE NUMBER WAS ENTERED AS AN INTEGER
+*                              AND IS NOW ADJUSTED BY MULTIPLYING
+*                              BY 10 OR 1/10 THE NUMBER OF TIMES
+*                              DETERMINED BY RLIO2 AND RLIO7
+       SKR     COUNT
+       BRU     RLI31
+       XXA
+       SKG     =-256
+       BRU     UNFLO
+       SKG     D255        5.10
+       BRU     *+2
+       BRU     OVFLO
+       XXA
+       LDE 
+RLRTN  SKN     RLIO4
+       SBRM    BRS21           NEGATE NUMBER
+       LDX     ERNUM
+       BRR     IOLINK
+         
+RLITEN ZRO     AT
+       SUB     SIXTEEN
+       STA     ADJFAC
+       LDP     SICA1
+       LSH     2
+       XAB
+       ADD     SICA2
+       XAB
+       ADC     SICA1
+       LSH     1
+       XAB
+       ADD     ADJFAC
+       XAB
+       ADC     ZERO
+       STP     SICA1
+       BRR     AT
+
+
+GETFMT   ZRO     EEE       GET FORMAT FROM X                 [HB 22.06.71]
+         COPY    XB,A
+         LSH     3         BREAK OUT FORMAT TYPE.
+         STA     IOFMT
+         CLA
+         LSH     1
+         STA     OVFL      AND THE OVERFLOW SWITCH.
+         CLA
+         LSH     5
+         STA     IOD       THE DECIMAL PLACES FIELD.
+         CLA
+         LSH     1
+         STA     FORTAL    EXPONENTS FLAG.
+         CLA
+         LSH     5         FINALLY THE TOTAL WIDTH FIELD.
+         STA     IOW
+         BRR     EEE       AND RETURN                        [HB 22.06.71]
+
+
+
+UNFLO  LDA     =UNFLOM
+       LDB     MONE
+       LDX     ONE
+       BRS     34
+       LDP     INFTSM
+       BRU     RLRTN
+INFTSM DATA    2B7,401B
+UNFLOM ASC     'UNDERFLOW DURING INPUT$/'
+OVFLO  LDA     =OVFLOM
+       LDB     MONE
+       LDX     ONE
+       BRS     34
+         LDP     LGE       5.10
+       BRU      RLRTN
+OVFLOM ASC     'OVERFLOW DURING INPUT$/'
+*
+*   CONSTANTS
+* 
+$NULPTR   DATA    0         ZERO LENGTH STRING POINTERS.      HB 72/02/14
+$ZERO   DATA    0
+$ONE    DATA    1
+$B22T22   BSS     0         5.10
+$TWO    DATA    2
+$THREE  DATA    3
+$FL8      DATA    2B7       5.10
+$FOUR   DATA    4
+$FIVE   DATA    5
+$SIX    DATA    6
+$SEVEN    DATA    7
+$B10      BSS     0         5.10
+$EIGHT  DATA    8
+$B11      BSS     0         5.10
+$NINE     DATA    9         5.10
+$B12      BSS     0         5.10
+$TEN    DATA    10
+$B13      BSS     0         5.10
+$ELEVEN DATA    11
+$B14      BSS     0         5.10
+$TWELVE DATA    12
+$B15      BSS     0         5.10
+$THIRTEEN DATA  13
+$B16      BSS     0         5.10
+$FOURTEEN DATA  14
+$B17      BSS     0         5.10
+$FIFTEEN DATA   15
+$B20      BSS     0         5.10
+$SIXTEEN DATA   16
+$B24      BSS     0         5.10
+$Q20      DATA    20        5.10
+$B27      BSS     0         5.10
+$Q23    DATA    23
+$B31      BSS     0         5.10
+$Q25    DATA    25
+$B40      BSS     0         5.10
+$Q32    DATA    32
+$B44      BSS     0         5.10
+$Q36    DATA    36
+$B45      BSS     0         5.10
+$Q37    DATA    37
+$B46      BSS     0         5.10
+$Q38    DATA    38
+$B57      BSS     0         5.10
+$Q47      DATA    47                                          [HB 16.06.71]
+$MONE   DATA    -1
+$MTWO   DATA    -2
+$MFOUR  DATA    -4
+$MFIVE  DATA    -5
+$MSIX   DATA    -6
+$MQ12     DATA    -12       5.10
+$MAGIC    DATA    12525253B
+QX1    DATA    77777445B
+$B00T00 DATA    40000000B
+$B00T01   DATA    6B7       5.10
+$B00T09   DATA    77740000B OPCODE, INDIRECT MASK             HB 72/01/07
+$B01T23 DATA    37777777B
+$B05T23 DATA    01777777B
+$B08T23   DATA    177777B   5.10
+$ADRMSK  EQU     *                                           [HB 22.06.71]
+$B10T23  DATA    37777B                                      [HB 22.06.71]
+$B12T23   BSS     0
+$LENMSK   DATA    7777B
+$B777     BSS     0         5.10
+$B15T23 DATA    00000777B
+$B16T23   BSS     0         5.10
+$D255     BSS     0         5.10
+$CHMSK    DATA    377B      5.10
+EXP46  DATA    77777046B
+$B200     EQU     *         <5.10
+$XSGN     DATA    200B
+$B100     EQU     *
+$B17T17   BSS     0         5.10
+$XPSGN    DATA    100B      >5.10
+$FL9      DATA    22B6,4    9.0     5.10
+RLIO8  DATA    24000000B
+       DATA    00000001B
+       DATA    00000004B
+RLIO9  DATA    31463146B
+       DATA    31463146B
+       DATA    77777775B
+RLIO10 DATA    31463146B
+       DATA    31463154B
+       DATA    77777775B
+$BRU79   BRU     RLI79
+$BRU80   BRU     RLI80
+* 
+*   ADDRESS CONSTANTS
+* 
+ARLIO10 ZRO    RLIO10
+ARLIO9 ZRO     RLIO9
+ARLIO8 ZRO     RLIO8
+B00T23 EQU     MONE
+ISCEND EQU     IE1
+$SICFIN  EQU     34000             TBG 8/13/68
+$LLL3    BSS     0         START OF LITERALS.
+
+       NOLIST  EXT,GO
+
+       END

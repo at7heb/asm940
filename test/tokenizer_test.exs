@@ -37,4 +37,9 @@ defmodule TokenizerTest do
     assert {:number, 1 <<< 21} == Enum.at(t.tokens, 8)
     assert 178 = t.line_number
   end
+
+  test "6 bit strings" do
+    _t = Tokenizer.tokens(178, "'' 'A' 'BC' 'DEF' 'GHIJ' '089@'", @flagsB) |> dbg
+    assert true
+  end
 end

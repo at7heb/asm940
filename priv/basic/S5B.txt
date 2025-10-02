@@ -1,0 +1,728 @@
+5BAS     IDENT   72-12-29  MATRIX SUB-ROUTINES  FILE:  /S5B/
+* CREATED BY RJSLUTZ 2/29/68 FOR MATRIX OPERATIONS
+*        MODIFIED FOR NEW COMPILER BY HOWARD BUSSEY.
+DIM2  OPD 15000000B,2
+
+FFX ZRO BUF31
+ SKA =40000000B
+ BRU ERRORO
+ SKD =23
+ BRU ERRORO
+ RSH 0,2
+ LDX BUF32
+ BRR* FFX
+
+
+ARG3 ZRO BUF30
+ MIN BUF29
+ LDX* BUF29
+       STX     ERNUM
+       LDB     =5
+ MIN BUF29
+ LDX* BUF29
+    SBRM EXM
+AR2  MIN BUF29
+ LDX* BUF29
+ SBRM EXM
+ BRR* ARG3
+
+ARG2 ZRO BUF30
+       STX     ERNUM
+       LDB     =5
+  BRU AR2
+
+ARG0   ZRO     BUF30
+       LDX     ERNUM
+       CLB
+       SBRM    EXM
+       BRR*    ARG0
+
+
+SETD3  ZRO     BUF30
+       LDA     BUF18
+       SKE     BUF23
+       BRU     ERRORM
+       STA     BUF26
+       LDA     BUF17
+       SKE     BUF22
+       BRU     ERRORM
+       STA     BUF25
+       BRU     *+2
+
+SETD2  ZRO     BUF30
+       LDX     ERNUM
+       SKN     2,2
+       BRU     *+2
+       BRU     ERRORU
+       LDA     BUF18
+       ADD     ONE
+       SKG     1,2
+       BRU     *+2
+       BRU     ERRORO
+       CLB
+       LSH     12
+       CAB
+       LDA     BUF17
+       ADD     ONE
+       SKG     0,2
+       BRU     *+2
+       BRU     ERRORO
+       LSH     12
+       STA     3,2
+       BRR*    SETD3
+
+
+EXM ZRO BUF31
+ SKN 2,2
+ BRU *+2
+ BRU ERRORU
+ LDA 0,2
+ STA BUF32
+ LDA 3,2
+ SKE =-1
+ BRU EXM1
+       STB     OVFL
+       CLB
+       LDA     0,2
+       LSH     12
+       ADD     1,2
+       STA     3,2
+       LDB     OVFL
+EXM1   LDX 2,2
+ XXB
+ STB BUF10,2
+  CAB
+ ETR =7777B
+  SUB =1
+ STA BUF13,2
+  LSH 12
+  ETR =7777B
+  SUB =1
+ STA BUF12,2
+ COPY N,B
+ ADD BUF32
+ LSH 1
+ STA BUF14,2
+ LDA BUF32
+ STA BUF11,2
+  ADD =2
+  LSH 1
+  ADM BUF10,2
+ EAX 5,2
+ CXB
+ BRR* EXM
+         
+$MATADD ZRO BUF29
+         CLX                 22.04.71
+  EAX MFAD
+         BRU     *+4       GO TO RIGHT PLACE.                [HB 29.06.71]
+$MATSUB ZRO BUF29
+         CLX                 22.04.71
+  EAX MFSB
+       STX     BUF28
+       SBRM    ARG3
+       SBRM    SETD3
+       SBRM    ARG0
+ BRU ADSB
+MFAD  FAD* BUF20
+     BRU *+2
+MFSB  FSB* BUF20
+       STP*    BUF10
+       LDP*    BUF20
+       SKE     =-1
+       BRU     *+2
+       BRU     ERRORP
+     BRU BACK1
+ADSB   LDA     BUF17
+ STA BUF25
+X2 LDP* BUF15
+       SKE     =-1
+       BRU     *+2
+       BRU     ERRORP
+ BRU* BUF28
+BACK  STP* BUF10
+BACK1  LDA =2
+ ADM BUF15
+ ADM BUF20
+ ADM BUF10
+ SKR BUF25
+ BRU X2
+ LDA BUF19
+ ADM BUF15
+ LDA BUF24
+ ADM BUF20
+ LDA BUF14
+ ADM BUF10
+ LDA BUF17
+ SKR BUF26
+ BRU X2-1
+ BRR* MATADD
+
+
+$MATKTA ZRO BUF29
+ SBRM ARG2
+ LDP BUF17
+ STP BUF22
+         CLX                 22.04.71
+ EAX MKA
+       STX     BUF28
+       SBRM    SETD3
+       SBRM    ARG0
+ BRU ADSB
+MKA  FMP TEMFIL
+    BRU BACK
+
+CON ZRO BUF31
+ STA BUF28
+  LDA BUF13
+ STA BUF26
+Y2 LDA BUF12
+ STA BUF25
+ EXU BUF28
+Y1 STP* BUF10
+ MIN BUF10
+ MIN BUF10
+ SKR BUF25
+ BRU Y1
+ LDA BUF14
+ ADM BUF10
+ SKR BUF26
+ BRU Y2
+ BRR* CON
+
+
+$MATTRN ZRO BUF29
+    SBRM  ARG2
+       LDP     BUF17
+       XAB
+       STP     BUF22
+       STP     BUF17
+       SBRM    SETD3
+       LDP     BUF17
+       XAB
+       STP     BUF17
+       STP     BUF22
+       SBRM    ARG0
+         CLX                 22.04.71
+ EAX TRN
+  LDA BUF10
+  SKE BUF15
+  BRU READ
+  BRU ERRORI
+TRN  LDP* BUF15
+    STP*  BUF10
+    LDA  =2
+    ADM  BUF15
+    LDA  BUF26
+    SKE  =0
+    BRU R1+1
+    LDA  BUF19
+    ADM  BUF15
+    BRU  R1+1
+
+
+$MATONS  ZRO BUF29
+  SBRM SUBS
+  BRU MATONE+1
+
+$MATONE ZRO BUF29
+  CLB
+  SBRM EXM
+  MIN BUF29
+ LDA CONOP
+ SBRM CON
+  BRR BUF29
+CONOP BRU MCON
+MCON LDP LIT
+ BRU Y1
+
+
+$MATZRS  ZRO BUF29
+  SBRM SUBS
+  BRU MATZER+1
+
+$MATZER ZRO BUF29
+  CLB
+  SBRM EXM
+  MIN BUF29
+ LDA ZROOP
+ SBRM CON
+ BRR* MATONE
+ZROOP CLAB
+
+
+$MATIDS  ZRO BUF29
+  SBRM SUBS
+  BRU MATIDN+1
+
+$MATIDN ZRO BUF29
+  CLB
+  SBRM EXM
+  MIN BUF29
+ LDA BUF10
+ STA BUF15
+  CLB
+  LDA BUF11
+  ADD =2
+  LSH 1
+  STA BUF17
+ LDA ZROOP
+ SBRM CON
+ LDA BUF12
+  SKE BUF13
+  BRU ERRORM
+ STA BUF25
+Y3 LDP LIT
+ STP* BUF15
+ LDA BUF17
+ ADM BUF15
+ SKR BUF25
+ BRU Y3
+ BRR* MATIDN
+         
+$MATMUL ZRO BUF29
+ SBRM ARG3
+ LDA BUF18
+ SKE BUF22
+ BRU ERRORM
+  LDA BUF23
+       STA     BUF18
+       SBRM    SETD2
+       LDA     BUF18
+ STA BUF23
+ STA BUF26
+       LDA     BUF22
+       STA     BUF18
+       SBRM    ARG0
+ LDA BUF10
+ SKE BUF15
+ BRU *+2
+ BRU ERRORI
+ SKE BUF20
+ BRU *+2
+ BRU ERRORI
+  MIN BUF22
+  LDA BUF22
+ CNA
+ SUB BUF22
+ STA BUF22 *
+ STA BUF19
+  MIN BUF16
+  LDA BUF16
+  ADD BUF16
+  STA BUF12
+   MIN BUF21
+  LDA BUF21
+  ADD BUF21
+  STA BUF24
+  LDA BUF15
+  STA BUF19
+Z4  STA BUF28
+ LDA BUF17
+ STA BUF25
+Z2 CLAB
+ STP* BUF10
+ LDA BUF18
+ STA BUF27
+Z1 LDA  =-1
+       SKE*     BUF20
+       BRU     *+2
+       BRU     ERRORP
+       LDP*    BUF15
+       SKE     =-1
+       BRU     *+2
+       BRU     ERRORP
+ FMP* BUF20
+ FAD* BUF10
+ STP* BUF10
+ LDA BUF12
+ ADM BUF15
+ LDA =2
+ ADM BUF20
+ SKR BUF27
+ BRU Z1
+ ADM BUF10
+ ADM BUF28
+ LDA BUF22
+ ADM BUF20
+ LDA BUF28
+  STA BUF15
+ SKR BUF25
+ BRU Z2
+ LDA BUF24
+ ADM BUF20
+ LDA BUF14
+ ADM BUF10
+ LDA BUF19
+  STA BUF15
+ SKR BUF26
+ BRU Z4
+ BRR* MATMUL
+         
+$MATINS  ZRO  BUF29
+    SBRM  SUBS
+    BRU MATIN+1
+
+$MATIN  ZRO BUF29
+       CLB
+       SBRM    EXM
+    MIN BUF29
+    LDA* BUF29
+    ETR =17700000B
+       MRG     INPW
+    LDB REAOP
+    STP  BUF18
+  LDA  =-1
+       STA     BUF14
+ EAX BUF18
+    BRU  READ
+INPW  HLT* BUF10
+REAOP  BRU R1+1
+READ STX BUF20
+  MIN BUF11
+ LDA BUF13
+  ADD =1
+ MUL BUF11
+ CBA
+ CNA
+ ADD =2
+ STA BUF17
+ LDA BUF11
+ ADD BUF11
+ STA BUF22
+ LDA BUF12
+ STA BUF25
+         BRU     R2A       <5.10
+R2       SKN     BUF14     DOING INPUT?
+         BRU     R2A
+         SKN     FMTSW     DOING FORMATTED INPUT?
+         BRU     R2A
+         LDA     IOPTR1    RESET FORMAT TO BEGINNING OF LINE.
+         STA     IOPTR
+         BRM*    TORET
+         STA     INPSPC    CLEAN EVERYTHING OUT.
+R2A      LDA     BUF13     >5.10
+  STA BUF26
+R1  BRU* BUF20
+  LDA BUF22
+  ADM BUF10
+  SKR BUF26
+  BRU R1
+  LDA BUF17
+  ADM BUF10
+  SKR BUF25
+  BRU R2
+       SKG     BUF14
+       BRU     *+2
+       BRR     BUF29
+         LDA*    BUF29     KLUDGE FOR END OF PRINT LIST      HB 72/01/24
+         SKE     MATO1
+         BRR     BUF29     NOT END OF LIST.
+         BRM*    MATPND    RESET FILE                              5.10
+         BRR     BUF29     HB 72/01/24
+
+WRIOP  BRU WRI2
+  BRU WRI
+WRI LDP* BUF10
+       SKE     =-1
+       BRU     *+2
+       BRU     ERRORP
+ STP TEMFIL
+  BRU BUF18
+WRI2     LDA     BUF26     LABEL MOVED                       HB 71.12.07
+ SKG =0
+       BRU     *+2
+       BRU     R1+1
+         CLA               SEE IF ALREADY AT BEG. OF LINE    HB 72/02/03
+         SKE     RTMP2     HB 72/02/03
+         BRM*    RETOUT    PRINT (RET).                      HB 72/01/24
+         LDA     IOPTR1    RESET PICTURE POINTER             HB 72-05-11
+         STA     IOPTR     TO BEGINNING OF PICTURE           HB 72-05-11
+         BRU     R1+1                                        HB 71.12.07
+         
+$MATOU ZRO BUF29
+    LDP  WRIOP
+  STP  BUF19
+    CLB
+    SBRM EXM
+    MIN  BUF29
+       LDA*    BUF29
+         SKE     MATO1     SEE IF END OF LIST OP             HB 72/01/24
+         BRU     *+2       NO
+         LDA     MATO2     YES, MAKE IT PRINT, LONG TAB      HB 72/01/24
+         STA     BUF18     SET INSTRUCTION FOR EACH VALUE    HB 71.12.07
+       CLA
+       STA     BUF14
+    BRU READ+1
+MATO1    SBRM*   :PAR      END OF LIST OP                    HB 72/01/24
+MATO2    BRM*    PAC       PRINT A VALUE, LONG TAB           HB 72/01/24
+         
+SUBS  ZRO BUF30
+    STX  BUF32
+  SKN 2,2
+  BRU *+2
+  DIM2 TEMFIL
+  LDP TEMFIL
+    SBRM FFX
+    SKG  0,2
+    BRU  *+2
+    BRU  ERRORO
+    CLB
+    LSH 12
+    STA 3,2
+    LDP TEMF2
+    SBRM FFX
+    ADM 3,2
+    SKG  1,2
+    BRR* SUBS
+    BRU ERRORO
+
+MOVE ZRO BUF30
+V1  LDP* BUF15
+       SKE     =-1
+       BRU     *+2
+       BRU     ERRORP
+  STP* BUF16
+  LDA =2
+  ADM BUF15
+  ADM BUF16
+  SKR BUF17
+  BRU V1
+  LDA BUF14
+  ADM BUF16
+  LDA BUF19
+  ADM BUF15
+  LDA BUF12
+  STA BUF17
+  SKR BUF18
+  BRU V1
+  BRR BUF30
+         
+$MATINV  ZRO BUF29
+       LDA     2,2
+       STA     TEMF4
+       LDP     LIT
+       STP*    TEMF4
+       SBRM    ARG2
+       LDP     BUF17
+       STP     BUF22
+       SBRM    SETD3
+       SBRM    ARG0
+       LDA     BUF10
+       STA     BUF16
+       STA     BUF22
+       STA     BUF23
+       STA     BUF24
+       SBRM    MOVE
+       CLX
+  EAX STACK    7/9/68 TBG
+  STX BUF21
+  LDA BUF11
+  ADD BUF11
+  ADD =2
+  STA BUF19
+  MUL BUF12
+  LSH 23
+  ADD BUF19
+  CNA
+  STA BUF16
+W0  LDA BUF22
+  STA BUF20
+  LDX BUF13
+  STX BUF25
+  LDB =-1
+  STB BUF17
+V3  LDA =-1
+  SKA* BUF20
+  BRU V31
+  MIN BUF20
+  BRU V2
+V31  MIN BUF20
+  LDA* BUF20
+  ETR =777B
+  EOR =400B
+  SKG BUF17
+  BRU V2
+  STA BUF17
+  LDX BUF25
+  STX* BUF21
+V2  MIN BUF20
+  SKR BUF25
+  BRU V3
+  SKN BUF17
+  BRU V0
+  EAX ERORD
+  BRU MES
+ERORD ASC 'MATRIX NEARLY SINGULAR/'
+V0  LDA BUF12
+  STA BUF17
+  STA BUF25
+  STA BUF32
+  LDA BUF24
+  STA BUF20
+       STA BUF27
+       STA BUF28
+       LDA BUF12
+       SUB*    BUF21
+       STA*    BUF21
+       ADD*    BUF21
+       ADD     BUF10
+       STA BUF26
+       SKG     BUF28
+       BRU     V5
+V4     LDP*    BUF27
+       SBRM    BRS21
+       STP     BUF30
+       LDP*    BUF26
+       STP*    BUF27
+       LDP     BUF30
+       STP*    BUF26
+       LDA     BUF19
+       ADM     BUF27
+       ADM     BUF26
+       SKR     BUF25
+       BRU     V4
+V5     LDA     BUF10
+       STA     BUF27
+       LDP*    BUF22
+       FMP*    TEMF4
+       STP*    TEMF4
+       LDP     LIT
+       FDV*    BUF22
+       STP*    BUF22
+       SBRM    BRS21
+       STP     BUF30
+V6     LDA     BUF17
+       SKE     BUF13
+       BRU     *+2
+       BRU     V7
+       LDP*    BUF23
+       FMP     BUF30
+       STP*    BUF23
+       LDA     BUF12
+       STA     BUF18
+V9     LDA     BUF18
+       SKE     BUF13
+       BRU     *+2
+       BRU     V8
+       LDP*    BUF23
+       FMP*    BUF20
+       FAD*    BUF27
+       STP     TEMF2
+       LDP*    BUF27
+       SKE     =0
+       BRU     *+2
+       BRU     V81
+       CBA
+       SUB     TEMF3
+       ETR     =777B
+       SKG     =377B
+       SKG     =30D
+       BRU     V81
+       CLAB
+       BRU     *+2
+V81    LDP     TEMF2
+       STP* BUF27
+V8     LDA     BUF19
+       ADM     BUF20
+       ADM     BUF27
+       SKR     BUF18
+  BRU V9
+  LDA BUF16
+  ADM BUF20
+  ADM BUF27
+V7  LDA =2
+  ADM BUF27
+  ADM BUF23
+  SKR BUF17
+  BRU V6
+W2  LDA BUF32
+  SKE BUF13
+  BRU *+2
+  BRU W1
+  LDP* BUF28
+  FMP* BUF22
+  STP* BUF28
+W1  LDA BUF19
+  ADM BUF28
+  SKR BUF32
+  BRU W2
+  MIN BUF21
+  LDA BUF19
+  ADM BUF22
+  LDA BUF14
+  ADM BUF23
+  LDA =2
+  ADM BUF22
+  ADM BUF24
+  SKR BUF13
+  BRU W0
+ LDA BUF12
+ STA BUF13
+ SKR BUF21
+ LDA BUF10
+ SUB BUF16
+ SUB BUF19
+ STA BUF26
+  BRU W5
+W6 LDA* BUF21
+ SKG BUF13
+ BRU W5
+ MUL BUF19
+  LSH 23
+  ADD BUF10
+ STA BUF27
+ LDA BUF12
+ STA BUF25
+W4 LDP* BUF26
+ STP BUF30
+ LDP* BUF27
+ SBRM BRS21
+ STP* BUF26
+ LDP BUF30
+ STP* BUF27
+ LDA =2
+ ADM BUF26
+ ADM BUF27
+ SKR BUF25
+ BRU W4
+ LDA BUF14
+ SUB BUF19
+ ADM BUF26
+W5 LDA BUF19
+ CNA
+ ADM BUF26
+ SKR BUF21
+ SKR BUF13
+ BRU W6
+ BRR* MATINV
+         
+$MATCOP ZRO BUF29
+  SBRM ARG3
+       SBRM    SETD3
+       SBRM    ARG0
+  LDA BUF10
+  STA BUF16
+  SBRM MOVE
+  BRR BUF29
+ERRORM EAX ERRM
+ BRU MES
+ERRORU EAX ERRU
+ BRU MES
+ERRORP EAX ERR3X
+       BRU     MES
+ERRORO EAX ERR8X
+       BRU     MES
+ERRORI EAX ERRI
+MES LDA BUF29
+  STA 0
+  BRU MESSAG
+ERRI ASC 'MATRICES NOT INDEPENDENT/'
+ERRM ASC 'INCONSISTENT DIMENSIONS/'
+ERRU ASC 'UNDEFINED MATRIX/'
+$LLL5    BSS     0
+
+       NOLIST  EXT,GO
+
+ END
+ 
