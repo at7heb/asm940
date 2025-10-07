@@ -117,7 +117,6 @@ defmodule A940.Tokenizer do
         accumulator
       end)
 
-    {:string6rv, Integer.to_string(rv, 8)} |> dbg
     {rv, v}
   end
 

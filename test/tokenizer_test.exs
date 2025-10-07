@@ -39,7 +39,11 @@ defmodule TokenizerTest do
   end
 
   test "6 bit strings" do
-    _t = Tokenizer.tokens(178, "'' 'A' 'BC' 'DEF' 'GHIJ' '089@'", @flagsB) |> dbg
-    assert true
+    t_struct = Tokenizer.tokens(178, "'' 'A' 'BC' 'DEF' 'GHIJ' '089@'", @flagsB)
+    tokens = t_struct.tokens
+    assert {:string_6, {0, ""}} == Enum.at(tokens, 0)
+    assert {:string_6, {0o4243, "BC"}} == Enum.at(tokens, 4)
+    assert {:string_6, {0o444546, "DEF"}} == Enum.at(tokens, 6)
+    assert {:string_6, {0o47505152, "GHIJ"}} == Enum.at(tokens, 8)
   end
 end

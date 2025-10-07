@@ -13,7 +13,9 @@ defmodule A940.State do
             # default relocation value of 1 (implicit, not stored)
             location_relative: 0,
             # this starts at value of RELORG and counts up until RETREL
-            location_absolute: 0
+            location_absolute: 0,
+            ident: "",
+            linenumber: 0
 
   def new(lines) do
     {_count, line_map} =
@@ -42,5 +44,20 @@ defmodule A940.State do
       when is_binary(symbol_name) do
     new_symbols = Map.delete(state.symbols, symbol_name)
     %{state | symbols: new_symbols}
+  end
+
+  def add_memory(%__MODULE__{} = state, value) do
+    new_code = Map.put(state.code, state.location_relative, value)
+    new_location = state.location_relative + 1
+
+    new_abs_location =
+      if state.flags.relocating, do: state.location_absolute, else: state.location_absolute + 1
+
+    %{
+      state
+      | code: new_code,
+        location_relative: new_location,
+        location_absolute: new_abs_location
+    }
   end
 end

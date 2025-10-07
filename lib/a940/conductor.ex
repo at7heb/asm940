@@ -27,12 +27,9 @@ defmodule A940.Conductor do
   end
 
   defp process(%A940.State{} = state) do
-    new_state =
-      state
-      |> A940.Pass0.run()
-      |> A940.Pass1.run()
-      |> A940.Pass2.run()
-
-    Enum.take(new_state.tokens_list, 5) |> dbg
+    state
+    |> A940.Pass0.run()
+    |> A940.Pass1.run()
+    |> A940.Pass2.run()
   end
 end
