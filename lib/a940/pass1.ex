@@ -1,6 +1,8 @@
 defmodule A940.Pass1 do
   alias A940.State
 
+  import Bitwise
+
   def run(%A940.State{} = state) do
     Enum.reduce(state.tokens_list, state, fn %A940.Tokenizer{line_number: linenum, tokens: tokens},
                                              state ->
@@ -77,6 +79,90 @@ defmodule A940.Pass1 do
 
   def handle_address_fields([{:eol, _}], %A940.State{} = state) do
     {[], state}
+  end
+
+  def handle_address_fields(
+        [
+          {:spaces, _},
+          {:number, val},
+          {:delimiter, ","},
+          {:number, tag_val}
+          | _rest
+        ],
+        %A940.State{} = state
+      ) do
+    address =
+      cond do
+        is_tuple(val) ->
+          {_, representation} = val
+          String.to_integer(representation, state.flags.default_base)
+
+        is_integer(val) ->
+          val
+
+        true ->
+          "unexpected number value:#{val}" |> dbg
+      end
+
+    tag =
+      cond do
+        is_tuple(tag_val) ->
+          {val, _representation} = tag_val
+          val
+
+        is_integer(tag_val) ->
+          tag_val
+
+        true ->
+          "unexpected tag value:#{tag_val}" |> dbg
+      end
+
+    new_state =
+      cond do
+        # the number is a comment...
+        state.flags.address_class == :no_address ->
+          state
+
+        true ->
+          address_field = address &&& 2 ** state.flags.address_length - 1
+
+          A940.State.merge_address(state, address_field, state.location_relative - 1)
+          |> A940.State.merge_tag(tag &&& 7, state.location_relative - 1)
+      end
+
+    {[], new_state}
+  end
+
+  def handle_address_fields(
+        [{:spaces, _}, {:number, val} | rest],
+        %A940.State{} = state
+      ) do
+    address =
+      cond do
+        is_tuple(val) ->
+          {_, representation} = val
+          String.to_integer(representation, state.flags.default_base)
+
+        is_integer(val) ->
+          val
+
+        true ->
+          "unexpected number value:#{val}" |> dbg
+      end
+
+    new_state =
+      cond do
+        # the number is a comment...
+        state.flags.address_class == :no_address ->
+          state
+
+        true ->
+          address_field = address &&& 2 ** state.flags.address_length - 1
+
+          A940.State.merge_address(state, address_field, state.location_relative - 1)
+      end
+
+    {[], new_state}
   end
 
   def handle_address_fields([], %A940.State{} = state) do

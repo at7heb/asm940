@@ -1,4 +1,6 @@
 defmodule A940.State do
+  import Bitwise
+
   defstruct lines: %{},
             tokens_list: [],
             used_tokens: [],
@@ -46,8 +48,9 @@ defmodule A940.State do
     %{state | symbols: new_symbols}
   end
 
-  def add_memory(%__MODULE__{} = state, value) do
-    new_code = Map.put(state.code, state.location_relative, value)
+  def add_memory(%__MODULE__{} = state, value, relocation \\ 0) do
+    memory_value = A940.MemoryValue.new(value, relocation)
+    new_code = Map.put(state.code, state.location_relative, memory_value)
     new_location = state.location_relative + 1
 
     new_abs_location =
@@ -58,6 +61,32 @@ defmodule A940.State do
       | code: new_code,
         location_relative: new_location,
         location_absolute: new_abs_location
+    }
+  end
+
+  def merge_address(%__MODULE__{} = state, address_value, location)
+      when address_value >= 0 and address_value <= 16383 and location >= 0 and location <= 16383 do
+    current_word = Map.get(state.code, location, :illegal)
+    # don't change the relocation
+    %{
+      state
+      | code:
+          Map.put(state.code, location, A940.MemoryValue.merge_value(current_word, address_value))
+    }
+  end
+
+  def merge_tag(%__MODULE__{} = state, tag_value, location)
+      when tag_value >= 0 and tag_value <= 7 and location >= 0 and location <= 16383 do
+    current_word = Map.get(state.code, location, :illegal)
+
+    %{
+      state
+      | code:
+          Map.put(
+            state.code,
+            location,
+            A940.MemoryValue.merge_value(current_word, tag_value <<< 21)
+          )
     }
   end
 end

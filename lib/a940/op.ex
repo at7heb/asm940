@@ -25,6 +25,7 @@ defmodule A940.Op do
     |> Map.put("STA", new(0o3500000))
     |> Map.put("LDA", new(0o7600000))
     |> Map.put("NOP", new(0o2000000, :maybe_address))
+    |> Map.put("XXA", new(0o4600600, :no_address))
   end
 
   def handle_direct_op(%A940.State{} = state, symbol_name) when is_binary(symbol_name) do

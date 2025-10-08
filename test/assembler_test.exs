@@ -29,6 +29,19 @@ defmodule AssemblerTest do
     assert a_out.ident == "A"
     assert is_map(a_out.code)
     assert map_size(a_out.code) == 1
-    assert Map.get(a_out.code, 0) == 07_600_005
+    mem_val = Map.get(a_out.code, 0)
+
+    assert mem_val.value == 0o7_600_005
+  end
+
+  test "simple with indexed instruction" do
+    source = ["A IDENT", " LDA 6,2", " END"]
+    a_out = A940.Conductor.runner(source)
+    assert a_out.ident == "A"
+    assert is_map(a_out.code)
+    assert map_size(a_out.code) == 1
+    mem_val = Map.get(a_out.code, 0)
+    IO.puts("mem val #{Integer.to_string(mem_val.value, 8)}")
+    assert mem_val.value == 0o27_600_006
   end
 end
