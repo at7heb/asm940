@@ -6,6 +6,7 @@ defmodule A940.Pass1 do
   def run(%A940.State{} = state) do
     Enum.reduce(state.tokens_list, state, fn %A940.Tokenizer{line_number: linenum, tokens: tokens},
                                              state ->
+      state = %{state | line_number: linenum}
       handle_statement(tokens, update_state_for_next_statement(state, linenum))
     end)
   end
@@ -13,13 +14,18 @@ defmodule A940.Pass1 do
   def handle_statement(tokens, %A940.State{} = state) do
     {new_tokens_0, new_state_0} = handle_beginning_of_statement(tokens, state)
     {new_tokens_1, new_state_1} = handle_opcode_in_statement(new_tokens_0, new_state_0)
-    {_new_tokens_2, new_state_2} = handle_address_fields(new_tokens_1, new_state_1)
+
+    {_new_tokens_2, new_state_2} =
+      if new_state_1.flags.done,
+        do: {[], new_state_1},
+        else: handle_address_fields(new_tokens_1, new_state_1)
+
     new_state_2
   end
 
   def update_state_for_next_statement(%A940.State{} = state, linenumber)
       when is_integer(linenumber) and linenumber > 0 do
-    %{state | flags: A940.Flags.default(), linenumber: linenumber}
+    %{state | flags: A940.Flags.default(), line_number: linenumber}
   end
 
   def handle_beginning_of_statement([{:spaces, _} | rest], %A940.State{} = state) do
@@ -46,6 +52,19 @@ defmodule A940.Pass1 do
     new_flags = %{state.flags | label: symbol}
     new_state = State.update_symbol_table(state, symbol, true)
     {rest, %{new_state | flags: new_flags}}
+  end
+
+  def handle_beginning_of_statement([{:comment, _} | _rest], %A940.State{} = state) do
+    new_flags = %{state.flags | done: true}
+    {[], %{state | flags: new_flags}}
+  end
+
+  def handle_beginning_of_statement(tokens, %A940.State{} = state) do
+    IO.puts(
+      "Cannot parse tokens at begining of statement \##{state.line_number}: #{inspect(Enum.take(tokens, 5))}"
+    )
+
+    raise "cannot parse tokens at beginning of statment"
   end
 
   def handle_opcode_in_statement(
@@ -75,6 +94,14 @@ defmodule A940.Pass1 do
 
   def handle_opcode_in_statement([], %A940.State{} = state) do
     {[], state}
+  end
+
+  def handle_opcode_in_statement(tokens, %A940.State{} = state) do
+    IO.puts(
+      "Cannot parse tokens in opcode of statement \##{state.line_number}: #{inspect(Enum.take(tokens, 5))}"
+    )
+
+    raise "cannot parse tokens in opcode of statment"
   end
 
   def handle_address_fields([{:eol, _}], %A940.State{} = state) do
@@ -134,7 +161,7 @@ defmodule A940.Pass1 do
   end
 
   def handle_address_fields(
-        [{:spaces, _}, {:number, val} | rest],
+        [{:spaces, _}, {:number, val} | _rest],
         %A940.State{} = state
       ) do
     address =
@@ -167,5 +194,13 @@ defmodule A940.Pass1 do
 
   def handle_address_fields([], %A940.State{} = state) do
     {[], state}
+  end
+
+  def handle_address_fields(tokens, %A940.State{} = state) do
+    IO.puts(
+      "Cannot parse tokens in address fields statement \##{state.line_number}: \n#{inspect(Enum.take(tokens, 5))}"
+    )
+
+    raise "cannot parse tokens in address fields"
   end
 end

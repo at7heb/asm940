@@ -17,7 +17,7 @@ defmodule A940.State do
             # this starts at value of RELORG and counts up until RETREL
             location_absolute: 0,
             ident: "",
-            linenumber: 0
+            line_number: 0
 
   def new(lines) do
     {_count, line_map} =
