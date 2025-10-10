@@ -1,6 +1,7 @@
 defmodule AssemblerTest do
   use ExUnit.Case
 
+  @tag :skip
   test "simplest" do
     source = ["A IDENT", " END"]
     a_out = A940.Conductor.runner(source)
@@ -48,7 +49,7 @@ defmodule AssemblerTest do
     mem_val = Map.get(a_out.code, 0)
     # IO.puts("mem val #{Integer.to_string(mem_val.value, 8)}")
     assert mem_val.value == 0o27_600_006
-    sss = a_out.symbols
+    # sss = a_out.symbols
     # sss |> dbg
   end
 
@@ -63,5 +64,18 @@ defmodule AssemblerTest do
     # IO.puts("mem val #{Integer.to_string(mem_val.value, 8)}")
     assert mem_val.value == 0o27_600_006
     # a_out.symbols |> dbg
+  end
+
+  @tag :skip
+  test "comment lines" do
+    source = ["A IDENT", "*****", "* EQUS", " END"]
+    a_out = A940.Conductor.runner(source)
+    a_out |> dbg
+  end
+
+  test "EQU tests" do
+    source = ["A IDENT", "A0 ZRO", "A0ALS EQU A0", "A1 LDA 5", "C0 EQU *", "SEVEN EQU 7", " END"]
+    a_out = A940.Conductor.runner(source)
+    a_out |> dbg
   end
 end

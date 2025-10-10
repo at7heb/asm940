@@ -25,7 +25,7 @@ defmodule A940.Conductor do
     |> process()
   end
 
-  def runs(s), do: runcount(s, 40)
+  def runs(s), do: runcount(s, 70)
 
   defp process(lines) when is_list(lines) do
     process(A940.State.new(lines))
@@ -38,6 +38,6 @@ defmodule A940.Conductor do
       |> A940.Pass1.run()
       |> A940.Pass2.run()
 
-    processed_state.code
+    {processed_state.code, processed_state.symbols}
   end
 end

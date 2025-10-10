@@ -1,5 +1,6 @@
 defmodule A940.Pass1 do
   alias A940.State
+  alias A940.Op
 
   import Bitwise
 
@@ -58,10 +59,11 @@ defmodule A940.Pass1 do
     {rest, %{new_state | flags: new_flags}}
   end
 
-  def handle_beginning_of_statement([{:comment, _} | _rest], %A940.State{} = state) do
-    new_flags = %{state.flags | done: true}
-    {[], %{state | flags: new_flags}}
-  end
+  def handle_beginning_of_statement([{:delimiter, "*"} | _rest], %A940.State{} = state),
+    do: handle_comment_statement(state)
+
+  def handle_beginning_of_statement([{:comment, _comment_text} | _rest], %A940.State{} = state),
+    do: handle_comment_statement(state)
 
   def handle_beginning_of_statement(tokens, %A940.State{} = state) do
     IO.puts(
@@ -71,9 +73,14 @@ defmodule A940.Pass1 do
     raise "cannot parse tokens at beginning of statment"
   end
 
+  def handle_comment_statement(%State{} = state) do
+    new_flags = %{state.flags | done: true}
+    {[], %{state | flags: new_flags}}
+  end
+
   def handle_opcode_in_statement(
         [{:symbol, symbol_name} | [{_, "*"} | rest]],
-        %A940.State{} = state
+        %State{} = state
       ) do
     new_state = A940.Op.handle_indirect_op(state, symbol_name)
 
@@ -84,23 +91,25 @@ defmodule A940.Pass1 do
     end
   end
 
-  def handle_opcode_in_statement([{:symbol, symbol_name} | rest], %A940.State{} = state) do
+  def handle_opcode_in_statement([{:symbol, symbol_name} | rest], %State{} = state) do
     new_state = A940.Op.handle_direct_op(state, symbol_name)
     {rest, new_state}
   end
 
-  # def handle_opcode_in_statement([{:sym, _} | rest], %A940.State{} = state) do
-  #   {[], state}
-  # end
-  # def handle_opcode_in_statement([{:eol, _}], %A940.State{} = state) do
+  def handle_opcode_in_statement([{:number, numeric_opcode} | rest], %State{} = state) do
+    new_state = Op.handle_numeric_op(state, numeric_opcode)
+    {rest, new_state}
+  end
+
+  # def handle_opcode_in_statement([{:eol, _}], %State{} = state) do
   #   {[], state}
   # end
 
-  def handle_opcode_in_statement([], %A940.State{} = state) do
+  def handle_opcode_in_statement([], %State{} = state) do
     {[], state}
   end
 
-  def handle_opcode_in_statement(tokens, %A940.State{} = state) do
+  def handle_opcode_in_statement(tokens, %State{} = state) do
     IO.puts(
       "Cannot parse tokens in opcode of statement \##{state.line_number}: #{inspect(Enum.take(tokens, 5))}"
     )
@@ -110,10 +119,10 @@ defmodule A940.Pass1 do
 
   def handle_address_fields(
         [{:spaces, _} | tokens],
-        %A940.State{agent_during_address_processing: agent} = state
+        %State{agent_during_address_processing: agent} = state
       )
       when agent != nil and is_list(tokens) do
-    tokens |> dbg
+    # tokens |> dbg
 
     address_tokens =
       Enum.reduce_while(tokens, [], fn token, token_list ->
@@ -130,7 +139,7 @@ defmodule A940.Pass1 do
     {rest_of_tokens, agent.(state, address_tokens)}
   end
 
-  def handle_address_fields([{:eol, _}], %A940.State{} = state) do
+  def handle_address_fields([{:eol, _}], %State{} = state) do
     {[], state}
   end
 
@@ -142,7 +151,7 @@ defmodule A940.Pass1 do
           {:number, tag_val}
           | _rest
         ],
-        %A940.State{} = state
+        %State{} = state
       ) do
     address =
       cond do
@@ -179,8 +188,8 @@ defmodule A940.Pass1 do
         true ->
           address_field = address &&& 2 ** state.flags.address_length - 1
 
-          A940.State.merge_address(state, address_field, state.location_relative - 1)
-          |> A940.State.merge_tag(tag &&& 7, state.location_relative - 1)
+          State.merge_address(state, address_field, state.location_relative - 1)
+          |> State.merge_tag(tag &&& 7, state.location_relative - 1)
       end
 
     {[], new_state}
@@ -188,7 +197,7 @@ defmodule A940.Pass1 do
 
   def handle_address_fields(
         [{:spaces, _}, {:number, val} | _rest],
-        %A940.State{} = state
+        %State{} = state
       ) do
     address =
       cond do
@@ -212,17 +221,17 @@ defmodule A940.Pass1 do
         true ->
           address_field = address &&& 2 ** state.flags.address_length - 1
 
-          A940.State.merge_address(state, address_field, state.location_relative - 1)
+          State.merge_address(state, address_field, state.location_relative - 1)
       end
 
     {[], new_state}
   end
 
-  def handle_address_fields([], %A940.State{} = state) do
+  def handle_address_fields([], %State{} = state) do
     {[], state}
   end
 
-  def handle_address_fields(tokens, %A940.State{} = state) do
+  def handle_address_fields(tokens, %State{} = state) do
     IO.puts(
       "Cannot parse tokens in address fields statement \##{state.line_number}: \n#{inspect(Enum.take(tokens, 5))}"
     )

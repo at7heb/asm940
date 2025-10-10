@@ -1,6 +1,8 @@
 defmodule A940.State do
   import Bitwise
 
+  alias A940.Address
+
   defstruct lines: %{},
             tokens_list: [],
             used_tokens: [],
@@ -35,10 +37,19 @@ defmodule A940.State do
       if state.flags.relocating, do: state.location_relative, else: state.location_absolute
 
     address_relocation = if state.flags.relocating, do: 1, else: 0
-    new_address = A940.Address.new(address_value, address_relocation, exported?)
+    new_address = Address.new(address_value, address_relocation, exported?)
     old_address = Map.get(state.symbols, symbol_name)
     if nil != old_address, do: raise("multiply defined symbol: #{symbol_name} ")
     new_symbols = Map.put(state.symbols, symbol_name, new_address)
+    %{state | symbols: new_symbols}
+  end
+
+  def redefine_symbol_value(%__MODULE__{} = state, symbol_name, value, relocation)
+      when is_binary(symbol_name) do
+    old_address_value = Map.get(state.symbols, symbol_name)
+    {value, relocation} |> dbg
+    new_address_value = Address.new(value, relocation, old_address_value.exported?) |> dbg
+    new_symbols = Map.put(state.symbols, symbol_name, new_address_value)
     %{state | symbols: new_symbols}
   end
 

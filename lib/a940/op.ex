@@ -1,4 +1,8 @@
 defmodule A940.Op do
+  alias A940.State
+
+  import Bitwise
+
   defstruct value: 0,
             # :maybe_address, :yes_address, :no_address
             address_class: :maybe_address,
@@ -18,10 +22,11 @@ defmodule A940.Op do
   def opcode_table do
     %{}
     |> Map.put("IDENT", new(0, :no_address, 0, &A940.Directive.ident/1))
-    |> Map.put("BSS", new(0, :no_address, 0, &A940.Directive.bss/1))
+    |> Map.put("BSS", new(0, :yes_address, 0, &A940.Directive.bss/1))
     |> Map.put("ZRO", new(0, :no_address, 0, &A940.Directive.zro/1))
-    |> Map.put("DATA", new(0, :no_address, 0, &A940.Directive.data/1))
+    |> Map.put("DATA", new(0, :yes_address, 0, &A940.Directive.data/1))
     |> Map.put("END", new(0, :no_address, 0, &A940.Directive.f_end/1))
+    |> Map.put("EQU", new(0, :yes_address, 0, &A940.Directive.equ/1))
     |> Map.put("BRU", new(0o0100000))
     |> Map.put("STA", new(0o3500000))
     |> Map.put("LDA", new(0o7600000))
@@ -43,6 +48,11 @@ defmodule A940.Op do
         A940.State.add_memory(state, op.value)
         |> update_flags(op.address_class, op.address_length)
     end
+  end
+
+  def handle_numeric_op(%State{} = state, numeric_opcode) when is_integer(numeric_opcode) do
+    A940.State.add_memory(state, (numeric_opcode &&& 0o777) <<< 15)
+    |> update_flags(:yes_address, 14)
   end
 
   def handle_indirect_op(%A940.State{} = state, symbol_name) when is_binary(symbol_name) do

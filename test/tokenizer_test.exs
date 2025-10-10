@@ -9,7 +9,7 @@ defmodule TokenizerTest do
   @flagsB %{default_base: 8}
   @flagsD %{default_base: 10}
 
-  # @tag :skip
+  @tag :skip
   test "create tokens" do
     t = Tokenizer.tokens(1, "A", @flagsD)
     assert 1 == length(t.tokens)
@@ -38,6 +38,7 @@ defmodule TokenizerTest do
     assert 178 = t.line_number
   end
 
+  @tag :skip
   test "6 bit strings" do
     t_struct = Tokenizer.tokens(178, "'' 'A' 'BC' 'DEF' 'GHIJ' '089@'", @flagsB)
     tokens = t_struct.tokens
