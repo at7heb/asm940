@@ -6,7 +6,6 @@ defmodule A940.Pass1 do
   def run(%A940.State{} = state) do
     Enum.reduce(state.tokens_list, state, fn %A940.Tokenizer{line_number: linenum, tokens: tokens},
                                              state ->
-      state = %{state | line_number: linenum}
       handle_statement(tokens, update_state_for_next_statement(state, linenum))
     end)
   end
@@ -25,7 +24,12 @@ defmodule A940.Pass1 do
 
   def update_state_for_next_statement(%A940.State{} = state, linenumber)
       when is_integer(linenumber) and linenumber > 0 do
-    %{state | flags: A940.Flags.default(), line_number: linenumber}
+    %{
+      state
+      | flags: A940.Flags.default(),
+        line_number: linenumber,
+        agent_during_address_processing: nil
+    }
   end
 
   def handle_beginning_of_statement([{:spaces, _} | rest], %A940.State{} = state) do
@@ -102,6 +106,28 @@ defmodule A940.Pass1 do
     )
 
     raise "cannot parse tokens in opcode of statment"
+  end
+
+  def handle_address_fields(
+        [{:spaces, _} | tokens],
+        %A940.State{agent_during_address_processing: agent} = state
+      )
+      when agent != nil and is_list(tokens) do
+    tokens |> dbg
+
+    address_tokens =
+      Enum.reduce_while(tokens, [], fn token, token_list ->
+        cond do
+          elem(token, 0) == :spaces -> {:halt, token_list}
+          elem(token, 0) == :delimiter and elem(token, 1) == "," -> {:halt, token_list}
+          elem(token, 0) == :eol -> {:halt, token_list}
+          true -> {:cont, [token | token_list]}
+        end
+      end)
+      |> Enum.reverse()
+
+    rest_of_tokens = Enum.slice(tokens, length(address_tokens)..-1//1)
+    {rest_of_tokens, agent.(state, address_tokens)}
   end
 
   def handle_address_fields([{:eol, _}], %A940.State{} = state) do

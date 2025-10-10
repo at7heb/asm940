@@ -6,7 +6,7 @@ defmodule A940.Tokenizer do
 
   @white_space ~r/^\h+/
   @number ~r/^\d+/
-  @decimal_number ~r/^(\d+)(D)/
+  @decimal_number ~r/^(\d+)(D)([-+*\/,()=.$_" ]|$)/
   @octal_number ~r/^([0-7]+)B([0-7]?)([-+*\/,()=.$_" ]|$)/
   @symbol ~r/^[A-Z0-9:]+/
   @string_6 ~r/^'([^']{0,4})'/
@@ -53,15 +53,24 @@ defmodule A940.Tokenizer do
         octal_number != nil ->
           {:number, decode_octal(octal_number), hd(octal_number)}
 
-        symbol != nil ->
-          {:symbol, hd(symbol), hd(symbol)}
-
         decimal_number != nil ->
           {:number, decode_decimal(decimal_number), hd(decimal_number)}
+
+        symbol != nil ->
+          cond do
+            String.contains?(hd(symbol), ~w/A B C D E F G H I J K L M N O P Q R S T U V W X Y Z/) ->
+              {:symbol, hd(symbol), hd(symbol)}
+
+            true ->
+              {:number, decode_number(hd(number), flags), hd(number)}
+          end
 
         number != nil ->
           {line, number}
           {:number, decode_number(hd(number), flags), hd(number)}
+
+        # symbol != nil ->
+        #   {:symbol, hd(symbol), hd(symbol)}
 
         string_6 != nil ->
           {:string_6, decode_string_6(hd(tl(string_6))), hd(string_6)}

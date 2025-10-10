@@ -25,4 +25,14 @@ defmodule A940.Address do
       exported?: exported,
       b14?: false
     }
+
+  # eval can return any number, not just one that fits into a 14-bit address field
+  # it is in this A940.Address module because the number is in the address field of
+  # each instruction.
+  def eval(%A940.State{} = _state, [{:number, num}] = _address_tokens) when is_integer(num),
+    do: num
+
+  def eval(%A940.State{} = state, [{:number, {_num, representation}}] = _address_tokens)
+      when is_binary(representation),
+      do: String.to_integer(representation, state.flags.default_base)
 end

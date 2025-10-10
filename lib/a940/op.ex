@@ -20,6 +20,7 @@ defmodule A940.Op do
     |> Map.put("IDENT", new(0, :no_address, 0, &A940.Directive.ident/1))
     |> Map.put("BSS", new(0, :no_address, 0, &A940.Directive.bss/1))
     |> Map.put("ZRO", new(0, :no_address, 0, &A940.Directive.zro/1))
+    |> Map.put("DATA", new(0, :no_address, 0, &A940.Directive.data/1))
     |> Map.put("END", new(0, :no_address, 0, &A940.Directive.f_end/1))
     |> Map.put("BRU", new(0o0100000))
     |> Map.put("STA", new(0o3500000))
