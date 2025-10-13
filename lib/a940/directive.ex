@@ -1,10 +1,10 @@
 defmodule A940.Directive do
   alias A940.State
 
-  def bss(%A940.State{} = state),
+  def bss(%State{} = state),
     do: %{state | agent_during_address_processing: &A940.Directive.bss_post_agent/2}
 
-  def bss_post_agent(%A940.State{} = state, address_tokens) do
+  def bss_post_agent(%State{} = state, address_tokens) do
     {val, relocation} = A940.Address.eval(state, address_tokens)
 
     if val < 1 or val > 16383,
@@ -16,26 +16,26 @@ defmodule A940.Directive do
     Enum.reduce(1..val, state, fn _n, state -> zro(state) end)
   end
 
-  def data(%A940.State{} = state),
+  def data(%State{} = state),
     do: %{state | agent_during_address_processing: &A940.Directive.data_post_agent/2}
 
-  def data_post_agent(%A940.State{} = state, address_tokens) do
+  def data_post_agent(%State{} = state, address_tokens) do
     {val, relocation} = A940.Address.eval(state, address_tokens)
 
-    A940.State.add_memory(state, val, relocation)
+    State.add_memory(state, val, relocation)
   end
 
-  def equ(%A940.State{} = state),
+  def equ(%State{} = state),
     do: %{state | agent_during_address_processing: &A940.Directive.equ_post_agent/2}
 
-  def equ_post_agent(%A940.State{} = state, address_tokens) do
+  def equ_post_agent(%State{} = state, address_tokens) do
     {address_tokens, state.line_number} |> dbg
     {val, relocation} = A940.Address.eval(state, address_tokens)
 
     State.redefine_symbol_value(state, state.flags.label, val, relocation)
   end
 
-  def f_end(%A940.State{} = state) do
+  def f_end(%State{} = state) do
     if state.ident == "" do
       raise "No IDENT directive"
     end
@@ -44,19 +44,17 @@ defmodule A940.Directive do
     %{state | flags: new_flags}
   end
 
-  def ident(%A940.State{} = state) do
+  def ident(%State{} = state) do
     if state.ident != "" do
       raise "Multiple IDENT directives"
     end
 
-    ident_label = state.flags.label
-    new_symbols = A940.State.remove_symbol(state, ident_label)
-    new_flags = %{state.flags | done: true}
-    %{state | symbols: new_symbols, ident: ident_label, flags: new_flags}
+    new_state = State.remove_symbol(state, state.flags.label)
+    %{new_state | ident: state.flags.label, flags: %{state.flags | done: true}}
   end
 
-  def zro(%A940.State{} = state) do
+  def zro(%State{} = state) do
     %{state | flags: %{state.flags | done: true}}
-    |> A940.State.add_memory(0, 0)
+    |> State.add_memory(0, 0)
   end
 end

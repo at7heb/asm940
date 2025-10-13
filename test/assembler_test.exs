@@ -74,7 +74,17 @@ defmodule AssemblerTest do
   end
 
   test "EQU tests" do
-    source = ["A IDENT", "A0 ZRO", "A0ALS EQU A0", "A1 LDA 5", "C0 EQU *", "SEVEN EQU 7", " END"]
+    source = [
+      "A IDENT",
+      "A0 ZRO",
+      "A0ALS EQU A0",
+      "A1 LDA 5",
+      "C0 EQU *",
+      "SEVEN EQU 7",
+      " BRU SEVEN",
+      " END"
+    ]
+
     a_out = A940.Conductor.runner(source)
     a_out |> dbg
   end

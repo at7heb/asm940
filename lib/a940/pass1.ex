@@ -13,13 +13,16 @@ defmodule A940.Pass1 do
 
   def handle_statement(tokens, %A940.State{} = state) do
     {new_tokens_0, new_state_0} = handle_beginning_of_statement(tokens, state)
+    check_symbols(new_state_0, new_tokens_0)
     {new_tokens_1, new_state_1} = handle_opcode_in_statement(new_tokens_0, new_state_0)
+    check_symbols(new_state_1, new_tokens_1)
 
     {_new_tokens_2, new_state_2} =
       if new_state_1.flags.done,
         do: {[], new_state_1},
         else: handle_address_fields(new_tokens_1, new_state_1)
 
+    check_symbols(new_state_2, [])
     new_state_2
   end
 
@@ -237,5 +240,22 @@ defmodule A940.Pass1 do
     )
 
     raise "cannot parse tokens in address fields"
+  end
+
+  defp check_symbols(%State{} = state, tokens_list) do
+    syms = state.symbols
+    keys = Map.keys(syms)
+
+    bad_keys =
+      Enum.filter(keys, fn key -> not (is_binary(key) and Regex.match?(~r/^[0-9A-Z:]+$/, key)) end)
+
+    if length(bad_keys) > 0 do
+      IO.puts("line #{state.line_number}, ")
+      tokens_list |> dbg
+      raise "extra stuff in state.symbols"
+    end
+
+    Enum.each(bad_keys, fn key -> IO.puts("Bad key: #{inspect(key)}") end)
+    state
   end
 end
