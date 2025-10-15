@@ -6,9 +6,13 @@ defmodule A940.State do
   defstruct lines: %{},
             tokens_list: [],
             used_tokens: [],
+            label_tokens: [],
+            opcode_tokens: [],
+            address_tokens_list: [[]],
+            operation: %A940.Op{},
             symbols: %{},
             macros: %{},
-            ops: %{},
+            # ops: %{},
             # keys are the relocatable location, value is a MemoryValue
             # should this be a genserver??
             code: %{},
@@ -28,7 +32,7 @@ defmodule A940.State do
         {count + 1, Map.put(map, count, line)}
       end)
 
-    %__MODULE__{lines: line_map, ops: A940.Op.opcode_table()}
+    %__MODULE__{lines: line_map}
   end
 
   def update_symbol_table(%__MODULE__{} = state, symbol_name, exported? \\ false)

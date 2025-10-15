@@ -12,18 +12,21 @@ defmodule A940.Pass1 do
   end
 
   def handle_statement(tokens, %A940.State{} = state) do
-    {new_tokens_0, new_state_0} = handle_beginning_of_statement(tokens, state)
-    check_symbols(new_state_0, new_tokens_0)
-    {new_tokens_1, new_state_1} = handle_opcode_in_statement(new_tokens_0, new_state_0)
-    check_symbols(new_state_1, new_tokens_1)
+    {tokens, state} = get_label_tokens(tokens, state)
+    {state.label_tokens, tokens} |> dbg
+    {tokens, state} = get_opcode_tokens(tokens, state)
+    {state.opcode_tokens, tokens} |> dbg
+    state = Op.process_opcode(state)
+    # state
 
-    {_new_tokens_2, new_state_2} =
-      if new_state_1.flags.done,
-        do: {[], new_state_1},
-        else: handle_address_fields(new_tokens_1, new_state_1)
+    {_, state} =
+      if state.operation.address_class == :no_address,
+        do: {[], state},
+        else: get_address_tokens(tokens, state)
 
-    check_symbols(new_state_2, [])
-    new_state_2
+    {state.label_tokens, state.opcode_tokens, state.flags.address_class,
+     state.flags.address_length, state.address_tokens_list}
+    |> dbg
   end
 
   def update_state_for_next_statement(%A940.State{} = state, linenumber)
@@ -32,43 +35,49 @@ defmodule A940.Pass1 do
       state
       | flags: A940.Flags.default(),
         line_number: linenumber,
-        agent_during_address_processing: nil
+        agent_during_address_processing: nil,
+        label_tokens: [],
+        opcode_tokens: [],
+        # two token lists for indexed;
+        # one token list for simple address
+        # empty list for :no_address ops
+        # many lists of tokens for macro calls
+        address_tokens_list: [[]]
     }
   end
 
-  def handle_beginning_of_statement([{:spaces, _} | rest], %A940.State{} = state) do
+  def get_label_tokens([{:spaces, _} | rest], %A940.State{} = state) do
+    # label tokens already set to empty list
     {rest, state}
   end
 
-  def handle_beginning_of_statement([{:eol, _}], %A940.State{} = state) do
-    {[], state}
+  def get_label_tokens([{:eol, _}], %A940.State{} = state) do
+    done_with_statement(state)
   end
 
-  def handle_beginning_of_statement(
-        [{:symbol, symbol} | [{:spaces, _} | rest]],
+  def get_label_tokens([], %A940.State{} = state) do
+    done_with_statement(state)
+  end
+
+  def get_label_tokens([{:delimiter, "*"}], %A940.State{} = _state) do
+    raise "* delimiter instead of comment"
+    # done_with_statement(state)
+  end
+
+  def get_label_tokens([{:comment, _}], %A940.State{} = state) do
+    done_with_statement(state)
+  end
+
+  def get_label_tokens(
+        tokens,
         %A940.State{} = state
-      ) do
-    new_flags = %{state.flags | label: symbol}
-    new_state = State.update_symbol_table(state, symbol)
-    {rest, %{new_state | flags: new_flags}}
+      )
+      when is_list(tokens) do
+    {label_tokens, rest, {:spaces, _}} = tokens_up_to(tokens, [{:spaces, " "}])
+    {rest, %{state | label_tokens: label_tokens}}
   end
 
-  def handle_beginning_of_statement(
-        [{:delimiter, "$"} | [{:symbol, symbol} | [{:spaces, _} | rest]]],
-        %A940.State{} = state
-      ) do
-    new_flags = %{state.flags | label: symbol}
-    new_state = State.update_symbol_table(state, symbol, true)
-    {rest, %{new_state | flags: new_flags}}
-  end
-
-  def handle_beginning_of_statement([{:delimiter, "*"} | _rest], %A940.State{} = state),
-    do: handle_comment_statement(state)
-
-  def handle_beginning_of_statement([{:comment, _comment_text} | _rest], %A940.State{} = state),
-    do: handle_comment_statement(state)
-
-  def handle_beginning_of_statement(tokens, %A940.State{} = state) do
+  def get_label_tokens(tokens, %A940.State{} = state) do
     IO.puts(
       "Cannot parse tokens at begining of statement \##{state.line_number}: #{inspect(Enum.take(tokens, 5))}"
     )
@@ -76,48 +85,61 @@ defmodule A940.Pass1 do
     raise "cannot parse tokens at beginning of statment"
   end
 
-  def handle_comment_statement(%State{} = state) do
+  def tokens_up_to(tokens, stop_tokens_list) when is_list(tokens) and is_list(stop_tokens_list) do
+    rv_tokens =
+      Enum.reduce_while(tokens, [], fn token, token_list ->
+        cond do
+          token in stop_tokens_list -> {:halt, token_list}
+          true -> {:cont, [token | token_list]}
+        end
+      end)
+      |> Enum.reverse()
+
+    cond do
+      length(rv_tokens) == length(tokens) ->
+        {rv_tokens, [], {:eol, ""}}
+
+      true ->
+        [stop_token | rest_of_tokens] = Enum.slice(tokens, length(rv_tokens)..-1//1)
+        {rv_tokens, rest_of_tokens, stop_token}
+    end
+  end
+
+  def done_with_statement(%State{} = state) do
     new_flags = %{state.flags | done: true}
     {[], %{state | flags: new_flags}}
   end
 
-  def handle_opcode_in_statement(
-        [{:symbol, symbol_name} | [{_, "*"} | rest]],
-        %State{} = state
-      ) do
-    new_state = A940.Op.handle_indirect_op(state, symbol_name)
-
-    if(state.flags.done) do
-      {[], new_state}
-    else
-      {rest, new_state}
-    end
+  def get_opcode_tokens(tokens, %State{} = state) do
+    {opcode_tokens, rest, {:spaces, _}} = tokens_up_to(tokens, [{:spaces, " "}, {:eol, ""}])
+    {rest, %{state | opcode_tokens: opcode_tokens}}
   end
 
-  def handle_opcode_in_statement([{:symbol, symbol_name} | rest], %State{} = state) do
-    new_state = A940.Op.handle_direct_op(state, symbol_name)
-    {rest, new_state}
+  def get_address_tokens(tokens, %State{} = state) do
+    {[], %{state | address_tokens_list: Enum.reverse(get_address_tokens([], tokens, state))}}
   end
 
-  def handle_opcode_in_statement([{:number, numeric_opcode} | rest], %State{} = state) do
-    new_state = Op.handle_numeric_op(state, numeric_opcode)
-    {rest, new_state}
-  end
-
-  # def handle_opcode_in_statement([{:eol, _}], %State{} = state) do
-  #   {[], state}
+  # def get_address_tokens(addresses_tokens_list, [], %State{} = state) do
+  #   %{state | address_tokens_list: Enum.reverse(addresses_tokens_list)}
   # end
 
-  def handle_opcode_in_statement([], %State{} = state) do
-    {[], state}
-  end
+  def get_address_tokens(addresses_tokens_list, tokens, %State{} = state) do
+    {address_field, rest, terminating_token} =
+      tokens_up_to(tokens, [{:delimiter, ","}, {:spaces, " "}, {:eol, ""}])
 
-  def handle_opcode_in_statement(tokens, %State{} = state) do
-    IO.puts(
-      "Cannot parse tokens in opcode of statement \##{state.line_number}: #{inspect(Enum.take(tokens, 5))}"
-    )
+    cond do
+      {:delimiter, ","} == terminating_token ->
+        get_address_tokens([address_field | addresses_tokens_list], rest, state)
 
-    raise "cannot parse tokens in opcode of statment"
+      {:spaces, " "} == terminating_token ->
+        [address_field | addresses_tokens_list]
+
+      {:eol, ""} == terminating_token ->
+        [address_field | addresses_tokens_list]
+
+      true ->
+        raise "addresses terminated with unrecognized token: #{terminating_token}"
+    end
   end
 
   def handle_address_fields(
@@ -242,20 +264,20 @@ defmodule A940.Pass1 do
     raise "cannot parse tokens in address fields"
   end
 
-  defp check_symbols(%State{} = state, tokens_list) do
-    syms = state.symbols
-    keys = Map.keys(syms)
+  # defp check_symbols(%State{} = state, tokens_list) do
+  #   syms = state.symbols
+  #   keys = Map.keys(syms)
 
-    bad_keys =
-      Enum.filter(keys, fn key -> not (is_binary(key) and Regex.match?(~r/^[0-9A-Z:]+$/, key)) end)
+  #   bad_keys =
+  #     Enum.filter(keys, fn key -> not (is_binary(key) and Regex.match?(~r/^[0-9A-Z:]+$/, key)) end)
 
-    if length(bad_keys) > 0 do
-      IO.puts("line #{state.line_number}, ")
-      tokens_list |> dbg
-      raise "extra stuff in state.symbols"
-    end
+  #   if length(bad_keys) > 0 do
+  #     IO.puts("line #{state.line_number}, ")
+  #     tokens_list |> dbg
+  #     raise "extra stuff in state.symbols"
+  #   end
 
-    Enum.each(bad_keys, fn key -> IO.puts("Bad key: #{inspect(key)}") end)
-    state
-  end
+  #   Enum.each(bad_keys, fn key -> IO.puts("Bad key: #{inspect(key)}") end)
+  #   state
+  # end
 end

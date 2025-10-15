@@ -19,7 +19,7 @@ defmodule A940.Op do
     }
   end
 
-  def opcode_table do
+  defp opcode_table do
     %{}
     |> Map.put("IDENT", new(0, :no_address, 0, &A940.Directive.ident/1))
     |> Map.put("BSS", new(0, :yes_address, 0, &A940.Directive.bss/1))
@@ -34,35 +34,67 @@ defmodule A940.Op do
     |> Map.put("XXA", new(0o4600600, :no_address))
   end
 
-  def handle_direct_op(%A940.State{} = state, symbol_name) when is_binary(symbol_name) do
-    op = get_op(state, symbol_name)
-
+  def process_opcode(%State{} = state) do
     cond do
-      op == nil ->
-        raise "Undefined opcode #{symbol_name}"
+      length(state.opcode_tokens) == 2 ->
+        [opcode_token, {:delimiter, "*"}] = state.opcode_tokens
+        handle_indirect_op(state, opcode_token)
 
-      op.processing_function != nil ->
-        op.processing_function.(state)
+      length(state.opcode_tokens) == 1 ->
+        handle_direct_op(state, hd(state.opcode_tokens))
 
       true ->
-        A940.State.add_memory(state, op.value)
-        |> update_flags(op.address_class, op.address_length)
+        raise "Illegal opcode tokens #{state.opcode_tokens}"
     end
   end
 
-  def handle_numeric_op(%State{} = state, numeric_opcode) when is_integer(numeric_opcode) do
-    A940.State.add_memory(state, (numeric_opcode &&& 0o777) <<< 15)
-    |> update_flags(:yes_address, 14)
+  def handle_direct_op(%A940.State{} = state, {opcode_token_flag, opcode} = _symbol_name) do
+    op =
+      cond do
+        opcode_token_flag == :number -> new(opcode, :yes_address, 14)
+        opcode_token_flag == :symbol -> get_op(state, opcode)
+      end
+
+    op_structure =
+      cond do
+        op == nil ->
+          raise "Undefined opcode #{opcode}"
+
+        true ->
+          op
+          # A940.State.add_memory(state, op.value)
+          # |> update_flags(op.address_class, op.address_length)
+      end
+
+    # ensure indirect only if 14 bit address.
+    # does this apply to macro calls?
+    # the value of this cond is immaterial and ignored; it is used only for the *raise* side effect
+    cond do
+      false == state.flags.indirect ->
+        nil
+
+      # indirect flag is set; address must be required and must be 14 bits
+      op_structure.address_class != :yes_address ->
+        raise "illegal indirect for opcode #{opcode}"
+
+      op_structure.address_length != 14 ->
+        raise "illegal indirect for opcode #{opcode} with address_length #{op_structure.address_length}"
+
+      true ->
+        nil
+    end
+
+    %{state | operation: op_structure}
   end
 
-  def handle_indirect_op(%A940.State{} = state, symbol_name) when is_binary(symbol_name) do
-    state
+  def handle_indirect_op(%A940.State{} = state, opcode_token) do
+    handle_direct_op(set_indirect_flag(state), opcode_token)
   end
 
-  defp get_op(%A940.State{ops: ops} = _state, op_name), do: Map.get(ops, op_name)
+  defp get_op(%A940.State{} = _state, op_name), do: Map.get(opcode_table(), op_name)
 
-  defp update_flags(%A940.State{} = state, address_class, address_length) do
-    new_flags = %{state.flags | address_class: address_class, address_length: address_length}
+  defp set_indirect_flag(%A940.State{} = state) do
+    new_flags = %{state.flags | indirect: true}
     %{state | flags: new_flags}
   end
 end

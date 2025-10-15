@@ -11,19 +11,22 @@ defmodule A940.Tokenizer do
   @symbol ~r/^[A-Z0-9:]+/
   @string_6 ~r/^'([^']{0,4})'/
   @string_long ~r/^'([^']{5,})'/
+  @delimiter_diagraphs ~r/^(>=)|(<=)/
   @delimiter ~r/^[-+*\/,()=.$_"]/
   @special ~r/^[;<>?[\]!%&@]/
   @illegal ~r/^[#^]+/
 
+  @eol_tuple {:eol, ""}
+
   def tokens(line_number, line, flags) when is_integer(line_number) and is_binary(line) do
     cond do
       String.length(line) == 0 ->
-        %__MODULE__{line_number: line_number, tokens: [{:eol, ""}]}
+        %__MODULE__{line_number: line_number, tokens: [@eol_tuple]}
 
       String.starts_with?(line, "*") ->
         %__MODULE__{
           line_number: line_number,
-          tokens: [{:comment, String.slice(line, 1..-1//1)}]
+          tokens: [{:comment, String.slice(line, 1..-1//1)}, @eol_tuple]
         }
 
       true ->
@@ -31,7 +34,8 @@ defmodule A940.Tokenizer do
     end
   end
 
-  def all_tokens(line, token_list, _flags) when line == "", do: Enum.reverse(token_list)
+  def all_tokens(line, token_list, _flags) when line == "",
+    do: Enum.reverse([@eol_tuple | token_list])
 
   def all_tokens(line, token_list, flags) do
     white_space = Regex.run(@white_space, line)
@@ -41,6 +45,7 @@ defmodule A940.Tokenizer do
     symbol = Regex.run(@symbol, line)
     string_6 = Regex.run(@string_6, line)
     string_long = Regex.run(@string_long, line)
+    delimiter_digraphs = Regex.run(@delimiter_diagraphs, line)
     delimiter = Regex.run(@delimiter, line)
     special = Regex.run(@special, line)
     illegal = Regex.run(@illegal, line)
@@ -48,7 +53,7 @@ defmodule A940.Tokenizer do
     {token_type, token_value, match} =
       cond do
         white_space != nil ->
-          {:spaces, hd(white_space), hd(white_space)}
+          {:spaces, " ", hd(white_space)}
 
         octal_number != nil ->
           {:number, decode_octal(octal_number), hd(octal_number)}
@@ -77,6 +82,9 @@ defmodule A940.Tokenizer do
 
         string_long != nil ->
           {:string_long, hd(tl(string_long)), hd(string_long)}
+
+        delimiter_digraphs != nil ->
+          {:delimiter, hd(delimiter_digraphs), hd(delimiter_digraphs)}
 
         delimiter != nil ->
           {:delimiter, hd(delimiter), hd(delimiter)}
