@@ -49,12 +49,17 @@ defmodule A940.Expression do
 
   def evaluate(tokens, symbols, current_location, current_relocation) do
     evstate = new(tokens ++ ["]"], symbols, current_location, current_relocation)
+    evaluate(evstate)
+  end
+
+  def evaluate(%__MODULE__{} = evstate) do
+    save_tokens = evstate.tokens
 
     try do
       new_state = ev_expression(evstate)
       {hd(new_state.value_stack), hd(new_state.relocation_stack)}
     catch
-      x -> {x, tokens}
+      x -> {x, save_tokens}
     end
   end
 
@@ -91,6 +96,12 @@ defmodule A940.Expression do
       hd(evstate.tokens) == {:delimiter, "/"} ->
         push_or_evaluate(rest(evstate), "/") |> ev_basic_expression()
 
+      hd(evstate.tokens) == {:delimiter, "+"} ->
+        push_or_evaluate(rest(evstate), "+") |> ev_basic_expression()
+
+      hd(evstate.tokens) == {:delimiter, "-"} ->
+        push_or_evaluate(rest(evstate), "-") |> ev_basic_expression()
+
       hd(evstate.tokens) == {:delimiter, "U+"} ->
         push_or_evaluate(rest(evstate), "U+") |> ev_basic_expression()
 
@@ -126,6 +137,10 @@ defmodule A940.Expression do
 
       hd(evstate.tokens) == {:delimiter, "%"} ->
         push_or_evaluate(rest(evstate), "%") |> ev_basic_expression()
+
+      true ->
+        evstate.tokens |> dbg
+        nil
     end
   end
 
