@@ -1,7 +1,7 @@
 defmodule A940.Op do
   alias A940.State
 
-  import Bitwise
+  # import Bitwise
 
   defstruct value: 0,
             # :maybe_address, :yes_address, :no_address

@@ -273,20 +273,16 @@ defmodule A940.Expression do
         raise "cannot apply [ operator"
 
       "U+" ->
-        {value_1, relocation_1, evstate} = pop_1_value_1_operator(evstate)
-        push_value(evstate, eval_operator(first_op, value_1, relocation_1))
+        pop_1_value_1_operator(evstate)
 
       "U-" ->
-        {value_1, relocation_1, evstate} = pop_1_value_1_operator(evstate)
-        push_value(evstate, eval_operator(first_op, value_1, relocation_1))
+        pop_1_value_1_operator(evstate)
 
       "U@" ->
-        {value_1, relocation_1, evstate} = pop_1_value_1_operator(evstate)
-        push_value(evstate, eval_operator(first_op, value_1, relocation_1))
+        pop_1_value_1_operator(evstate)
 
       _ ->
-        {value_1, relocation_1, value_2, relocation_2, evstate} = pop_2_values_1_operator(evstate)
-        push_value(evstate, eval_operator(first_op, value_1, relocation_1, value_2, relocation_2))
+        pop_2_values_1_operator(evstate)
     end
   end
 
@@ -441,10 +437,21 @@ defmodule A940.Expression do
     {value &&& 0o77777777, relocation}
   end
 
+  def pop_2_values_1_operator(%__MODULE__{} = evstate) do
+    {evstate, right_value, right_relocation} = pop_value(evstate)
+    {evstate, left_value, left_relocation} = pop_value(evstate)
+    {evstate, operator} = pop_operator(evstate)
+
+    push_value(
+      evstate,
+      eval_operator(operator, left_value, left_relocation, right_value, right_relocation)
+    )
+  end
+
   def pop_1_value_1_operator(%__MODULE__{} = evstate) do
     {evstate, value, relocation} = pop_value(evstate)
     {evstate, operator} = pop_operator(evstate)
-    push(evstate, eval_operator(operator, value, relocation))
+    push_value(evstate, eval_operator(operator, value, relocation))
   end
 
   def pop_value(%__MODULE__{} = evstate) do
@@ -452,6 +459,10 @@ defmodule A940.Expression do
     [relocation | rest_of_relocations] = evstate.relocation_stack
     evstate = %{evstate | value_stack: rest_of_values, relocation_stack: rest_of_relocations}
     {evstate, value, relocation}
+  end
+
+  def pop_operator(%__MODULE__{operator_stack: [first | rest]} = evstate) do
+    {%{evstate | operator_stack: rest}, first}
   end
 
   def push_value(%__MODULE__{} = evstate, {value, relocation}),
