@@ -13,9 +13,11 @@ defmodule A940.Pass1 do
 
   def handle_statement(tokens, %A940.State{} = state) do
     {tokens, state} = get_label_tokens(tokens, state)
-    {state.label_tokens, tokens} |> dbg
+    {state.label_tokens, tokens}
+    #  |> dbg
     {tokens, state} = get_opcode_tokens(tokens, state)
-    {state.opcode_tokens, tokens} |> dbg
+    {state.opcode_tokens, tokens}
+    #  |> dbg
     state = Op.process_opcode(state)
     # state
 
@@ -27,6 +29,8 @@ defmodule A940.Pass1 do
     {state.label_tokens, state.opcode_tokens, state.flags.address_class,
      state.flags.address_length, state.address_tokens_list}
     |> dbg
+
+    state
   end
 
   def update_state_for_next_statement(%A940.State{} = state, linenumber)
@@ -111,8 +115,15 @@ defmodule A940.Pass1 do
   end
 
   def get_opcode_tokens(tokens, %State{} = state) do
-    {opcode_tokens, rest, {:spaces, _}} = tokens_up_to(tokens, [{:spaces, " "}, {:eol, ""}])
-    {rest, %{state | opcode_tokens: opcode_tokens}}
+    {opcode_tokens, rest, terminating_token} = tokens_up_to(tokens, [{:spaces, " "}, {:eol, ""}])
+
+    cond do
+      terminating_token == {:spaces, " "} or terminating_token == {:eol, ""} ->
+        {rest, %{state | opcode_tokens: opcode_tokens}}
+
+      true ->
+        raise "badly formed opcode or terminator #{opcode_tokens} #{terminating_token} in statement #{state.line_number}"
+    end
   end
 
   def get_address_tokens(tokens, %State{} = state) do
