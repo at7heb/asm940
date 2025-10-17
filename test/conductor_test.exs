@@ -11,7 +11,7 @@ defmodule ConductorTest do
   LSH
   * IGNORE
   """
-  @tag :skip
+  # @tag skip
   test "create tokens" do
     # IO.puts(@source0)
     result = A940.Conductor.runner(@source0)
@@ -22,7 +22,7 @@ defmodule ConductorTest do
     assert {:symbol, "LSH"} == hd(tokens.tokens)
   end
 
-  @tag :skip
+  # @tag skip
   test "octal val" do
     # test_octal_decode("10")
     # test_octal_decode("777")
@@ -37,7 +37,7 @@ defmodule ConductorTest do
     assert {:number, 7 <<< 21} == Enum.at(tokens.tokens, 6)
   end
 
-  @tag :skip
+  # @tag skip
   test "simple token" do
     a = "A"
     result = A940.Conductor.runner(a)

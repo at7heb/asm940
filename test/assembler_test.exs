@@ -1,7 +1,7 @@
 defmodule AssemblerTest do
   use ExUnit.Case
 
-  @tag :skip
+  # @tag skip
   test "simplest" do
     source = ["A IDENT", " END"]
     a_out = A940.Conductor.runner(source)
@@ -13,21 +13,21 @@ defmodule AssemblerTest do
     # assert length(a_out.relocations) == 0
   end
 
-  @tag :skip
+  # @tag skip
   test "duplicate IDENTs cause error" do
     source = ["A IDENT", "B IDENT", " END"]
     err = "Multiple IDENT directives"
     assert_raise RuntimeError, err, fn -> A940.Conductor.runner(source) end
   end
 
-  @tag :skip
+  # @tag skip
   test "no IDENT directive" do
     source = [" END"]
     err = "No IDENT directive"
     assert_raise RuntimeError, err, fn -> A940.Conductor.runner(source) end
   end
 
-  @tag :skip
+  # @tag skip
   test "simple with instruction" do
     source = ["A IDENT", " LDA 5", " END"]
     a_out = A940.Conductor.runner(source)
@@ -39,7 +39,7 @@ defmodule AssemblerTest do
     assert mem_val.value == 0o7_600_005
   end
 
-  @tag :skip
+  # @tag skip
   test "simple with indexed instruction" do
     source = ["A IDENT", " LDA 6,2", " END"]
     a_out = A940.Conductor.runner(source)
@@ -53,7 +53,7 @@ defmodule AssemblerTest do
     # sss |> dbg
   end
 
-  @tag :skip
+  # @tag skip
   test "simple with labels instruction" do
     source = ["A IDENT", "B LDA 6,2", "C STA 7", " END"]
     a_out = A940.Conductor.runner(source)
@@ -66,7 +66,7 @@ defmodule AssemblerTest do
     # a_out.symbols |> dbg
   end
 
-  @tag :skip
+  # @tag skip
   test "comment lines" do
     source = ["A IDENT", "*****", "* EQUS", " END"]
     a_out = A940.Conductor.runner(source)

@@ -15,13 +15,26 @@ defmodule A940.Address do
 
   For ```SPTR1 EQU 3*WELCOM```, this would be ```0, 0, [{:number,3}, {:delimiter,"*"}, {:symbol, "WELCOM"}], false```.
   """
-  defstruct value: 0, relocation: 1, expression_tokens: [], b14?: true, exported?: false
+  defstruct value: 0,
+            relocation: 1,
+            expression_tokens: [],
+            b14?: true,
+            exported?: false,
+            external?: false
 
-  def new(value, relocation, exported)
-      when is_integer(value) and is_integer(relocation) and is_boolean(exported),
-      do: %__MODULE__{value: value &&& 0o7777777, relocation: relocation, exported?: exported}
+  def new(value, relocation, exported \\ false, b14? \\ false)
+      when is_integer(value) and is_integer(relocation) and is_boolean(exported) and
+             is_boolean(b14?) do
+    mask =
+      cond do
+        b14? -> 0o37777
+        true -> 0o77777777
+      end
 
-  def new(expression, exported) when is_list(expression),
+    %__MODULE__{value: value &&& mask, relocation: relocation, exported?: exported}
+  end
+
+  def new_expression(expression, exported \\ false) when is_list(expression),
     do: %__MODULE__{
       value: 0,
       relocation: 0,

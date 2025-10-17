@@ -39,20 +39,23 @@ defmodule A940.Expression do
   """
   def new(tokens, symbols, current_location, current_relocation) do
     %__MODULE__{
-      tokens: tokens,
+      tokens: tokens ++ [{:delimiter, "]"}],
       symbols: symbols,
       current_location: current_location,
-      current_relocation: current_relocation
+      current_relocation: current_relocation,
+      operator_stack: ["["]
     }
-    |> push_operator("[")
   end
 
   def evaluate(tokens, symbols, current_location, current_relocation) do
-    evstate = new(tokens ++ ["]"], symbols, current_location, current_relocation)
+    evstate = new(tokens, symbols, current_location, current_relocation)
     evaluate(evstate)
   end
 
   def evaluate(%__MODULE__{} = evstate) do
+    {evstate.tokens, evstate.operator_stack, evstate.value_stack, evstate.symbols}
+    # |> dbg
+
     save_tokens = evstate.tokens
 
     try do
@@ -64,6 +67,9 @@ defmodule A940.Expression do
   end
 
   def ev_expression(%__MODULE__{tokens: []} = evstate) do
+    {evstate.tokens, evstate.operator_stack, evstate.value_stack}
+    # |> dbg
+
     cond do
       length(evstate.operator_stack) > 0 -> throw(:error)
       length(evstate.value_stack) != 1 -> throw(:error)
@@ -72,6 +78,9 @@ defmodule A940.Expression do
   end
 
   def ev_expression(%__MODULE__{tokens: [first | _rest]} = evstate) do
+    {evstate.tokens, evstate.operator_stack, evstate.value_stack}
+    # |> dbg
+
     cond do
       first == {:delimiter, "+"} -> push_or_evaluate(rest(evstate), "U+") |> ev_basic_expression()
       first == {:delimiter, "-"} -> push_or_evaluate(rest(evstate), "U-") |> ev_basic_expression()
@@ -80,8 +89,22 @@ defmodule A940.Expression do
     end
   end
 
+  def ev_basic_expression(%__MODULE__{tokens: []} = evstate) do
+    {evstate.tokens, evstate.operator_stack, evstate.value_stack}
+    # |> dbg
+
+    evstate
+  end
+
   def ev_basic_expression(%__MODULE__{} = evstate) do
-    evstate = ev_primary(evstate)
+    {evstate.tokens, evstate.operator_stack, evstate.value_stack}
+    # |> dbg
+    ev_primary(evstate) |> op_and_primary()
+  end
+
+  def op_and_primary(%__MODULE__{} = evstate) do
+    {evstate.tokens, evstate.operator_stack, evstate.value_stack}
+    # > dbg
 
     cond do
       length(evstate.tokens) == 0 ->
@@ -138,14 +161,27 @@ defmodule A940.Expression do
       hd(evstate.tokens) == {:delimiter, "%"} ->
         push_or_evaluate(rest(evstate), "%") |> ev_basic_expression()
 
+      hd(evstate.tokens) == {:delimiter, "]"} ->
+        push_or_evaluate(rest(evstate), "]") |> ev_basic_expression()
+
       true ->
         evstate.tokens |> dbg
-        nil
+        raise "couldn't find an operator"
     end
   end
 
+  def ev_primary(%__MODULE__{tokens: []} = evstate) do
+    {evstate.tokens, evstate.operator_stack, evstate.value_stack}
+    # |> dbg
+    raise "do we get here?"
+    # evstate
+  end
+
   def ev_primary(%__MODULE__{tokens: [first | _rest]} = evstate) do
+    {evstate.tokens, evstate.operator_stack, evstate.value_stack}
+    #  |> dbg
     {tag, value} = first
+    #  |> dbg
 
     cond do
       tag == :number ->
@@ -155,14 +191,22 @@ defmodule A940.Expression do
         push_symbol(rest(evstate), value)
 
       first == {:delimiter, "*"} ->
-        push_current(evstate)
+        push_current(rest(evstate))
 
       first == {:delimiter, "["} ->
-        evstate = push_or_evaluate(rest(evstate), "[") |> ev_expression()
+        evstate = push_operator(rest(evstate), "[") |> ev_expression()
+        {evstate.tokens, evstate.operator_stack, evstate.value_stack}
+        #  |> dbg
 
-        if hd(evstate.tokens) == {:delimiter, "]"},
-          do: push_or_evaluate(rest(evstate), "]"),
-          else: throw({:error})
+        cond do
+          # unwind from expressions in [brackets]
+          evstate.tokens == [] -> evstate
+          hd(evstate.tokens) == {:delimiter, "]"} -> push_or_evaluate(rest(evstate), "]")
+          true -> throw({:error})
+        end
+
+      true ->
+        raise "error in ev_primary"
     end
   end
 
@@ -170,6 +214,7 @@ defmodule A940.Expression do
 
   def push_number(%__MODULE__{} = evstate, value) when is_integer(value) do
     value = value &&& 0o77777777
+    #  |> dbg
     push(evstate, value, 0)
   end
 
@@ -179,12 +224,16 @@ defmodule A940.Expression do
 
   def push_symbol(%__MODULE__{} = evstate, symbol_name) do
     symbol = Map.get(evstate.symbols, symbol_name)
+    #  |> dbg
     #     value: 0,
     # relocation: 0,
     # expression_tokens: expression,
     cond do
-      length(symbol.expresion_tokens) > 0 -> throw(:undefined_symbol)
-      true -> push(evstate, symbol.value, symbol.relocation)
+      symbol.expression_tokens == nil or symbol.expression_tokens == [] ->
+        push(evstate, symbol.value, symbol.relocation)
+
+      length(symbol.expression_tokens) > 0 ->
+        throw(:undefined_symbol)
     end
   end
 
@@ -195,24 +244,63 @@ defmodule A940.Expression do
     %{evstate | value_stack: value_stack, relocation_stack: relocation_stack}
   end
 
-  def push_operator(%__MODULE__{} = evstate, operator),
-    do: %{evstate | operator_stack: [operator | evstate.operator_stack]}
+  def push_operator(%__MODULE__{} = evstate, operator) do
+    "pushing operator #{operator}"
+    #  |> dbg
+    %{evstate | operator_stack: [operator | evstate.operator_stack]}
+  end
 
   def push_or_evaluate(
-        %__MODULE__{operator_stack: [first_op | rest_of_ops] = stacked_ops} = evstate,
+        %__MODULE__{operator_stack: [first_op | rest_of_ops] = _stacked_ops} = evstate,
         op
       ) do
-    cond do
-      # when []s match, just delete the open bracket -- [
-      op == {:delimiter, "]"} and first_op == {:delimiter, "["} ->
-        %{evstate | operator_stack: rest_of_ops}
+    {evstate.tokens, evstate.operator_stack, evstate.value_stack, op}
+    #  |> dbg
+    {op, first_op, rest_of_ops}
+    #  |> dbg
+    done_with_grouping = op == "]" and first_op == "["
+    {"boolean", done_with_grouping}
+    #  |> dbg
 
-      precedence(op) > precedence(first_op) ->
+    cond do
+      # when []s match, forget it, delete the open bracket -- [
+      done_with_grouping ->
+        cond do
+          evstate.tokens != [] ->
+            # "op&primary"
+            #  |> dbg
+            op_and_primary(%{evstate | operator_stack: rest_of_ops})
+
+          true ->
+            # "return evstate"
+            #  |> dbg
+            %{evstate | operator_stack: rest_of_ops}
+        end
+
+      # new_evstate = %{evstate | operator_stack: new_rest_of_ops} |> dbg
+
+      # cond do
+      #   # process the next operator if there is one...
+
+      #   rest_of_ops != [] ->
+      #     [new_operator | new_operator_stack] = rest_of_ops
+      #     new_evstate = %{evstate | operator_stack: new_operator_stack}
+      #     {new_operator, new_operator_stack} |> dbg
+      #     push_or_evaluate(new_evstate, new_operator)
+
+      #   # otherwise return
+      #   true ->
+      #     "push_or_evaluate returning" |> dbg
+      #     %{evstate | operator_stack: []}
+      # end
+
+      precedence(op) < precedence(first_op) ->
         # keep evaluating until operator on top of the stack is higher precedence
         apply_stack_operator(evstate) |> push_or_evaluate(op)
 
       true ->
-        %{evstate | operator_stack: [op | stacked_ops]}
+        push_operator(evstate, op)
+        # %{evstate | operator_stack: [op | stacked_ops]}
     end
   end
 
@@ -224,7 +312,7 @@ defmodule A940.Expression do
     case op do
       # everything is pushed after this
       "[" ->
-        70
+        5
 
       "^" ->
         60
@@ -473,6 +561,8 @@ defmodule A940.Expression do
     [value | rest_of_values] = evstate.value_stack
     [relocation | rest_of_relocations] = evstate.relocation_stack
     evstate = %{evstate | value_stack: rest_of_values, relocation_stack: rest_of_relocations}
+    # {value, relocation}
+    # |> dbg
     {evstate, value, relocation}
   end
 
@@ -486,6 +576,8 @@ defmodule A940.Expression do
   def push_value(%__MODULE__{} = evstate, value, relocation) do
     value_stack = [value | evstate.value_stack]
     relocation_stack = [relocation | evstate.relocation_stack]
+    # value_stack
+    # |> dbg
     %{evstate | value_stack: value_stack, relocation_stack: relocation_stack}
   end
 end
