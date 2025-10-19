@@ -14,23 +14,26 @@ defmodule A940.Pass1 do
   def handle_statement(tokens, %A940.State{} = state) do
     {tokens, state} = get_label_tokens(tokens, state)
     {state.label_tokens, tokens}
-    #  |> dbg
+    {state.line_number, state.ident} |> dbg
     {tokens, state} = get_opcode_tokens(tokens, state)
     {state.opcode_tokens, tokens}
-    #  |> dbg
+    {state.line_number, state.ident} |> dbg
+    {"processing opcode", state.line_number} |> dbg
+    state.ident |> dbg
     state = Op.process_opcode(state)
-    # state
+    {state.line_number, state.ident} |> dbg
 
     {_, state} =
       if state.operation.address_class == :no_address,
         do: {[], state},
         else: get_address_tokens(tokens, state)
 
-    {state.label_tokens, state.opcode_tokens, state.flags.address_class,
-     state.flags.address_length, state.address_tokens_list}
-    |> dbg
+    {state.line_number, state.ident, state.label_tokens, state.opcode_tokens,
+     state.operation.address_class, state.operation.address_length, state.address_tokens_list}
 
-    state
+    {state.line_number, state.ident} |> dbg
+
+    Op.process_opcode_again(state)
   end
 
   def update_state_for_next_statement(%A940.State{} = state, linenumber)
@@ -39,7 +42,6 @@ defmodule A940.Pass1 do
       state
       | flags: A940.Flags.default(),
         line_number: linenumber,
-        agent_during_address_processing: nil,
         label_tokens: [],
         opcode_tokens: [],
         # two token lists for indexed;
@@ -155,10 +157,10 @@ defmodule A940.Pass1 do
 
   def handle_address_fields(
         [{:spaces, _} | tokens],
-        %State{agent_during_address_processing: agent} = state
+        %State{} = state
       )
-      when agent != nil and is_list(tokens) do
-    # tokens |> dbg
+      when is_list(tokens) do
+    {"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", tokens} |> dbg
 
     address_tokens =
       Enum.reduce_while(tokens, [], fn token, token_list ->
@@ -172,7 +174,7 @@ defmodule A940.Pass1 do
       |> Enum.reverse()
 
     rest_of_tokens = Enum.slice(tokens, length(address_tokens)..-1//1)
-    {rest_of_tokens, agent.(state, address_tokens)}
+    {rest_of_tokens, state.operation.agent.(state, address_tokens)}
   end
 
   def handle_address_fields([{:eol, _}], %State{} = state) do

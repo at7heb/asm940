@@ -43,6 +43,8 @@ defmodule A940.Address do
       b14?: false
     }
 
+  def eval(%State{} = state), do: eval(state, hd(state.address_tokens_list))
+
   # eval can return any number, not just one that fits into a 14-bit address field
   # it is in this A940.Address module because the number is in the address field of
   # each instruction.
