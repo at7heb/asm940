@@ -56,15 +56,18 @@ defmodule A940.Address do
       do: {String.to_integer(representation, state.flags.default_base) &&& 0o7777777, 0}
 
   def eval(%State{} = state, [{:symbol, address_part_symbol}] = _address_token) do
-    address_part_address = Map.get(state.symbols, address_part_symbol, nil) |> dbg()
+    address_part_address = Map.get(state.symbols, address_part_symbol, nil)
+    # |> dbg()
     {address_part_address.value, address_part_address.relocation}
   end
 
   def eval(%State{} = state, [{:delimiter, "*"}] = _address_token) do
     if state.flags.relocating do
-      {state.location_relative, 1} |> dbg
+      {state.location_relative, 1}
+      # |> dbg
     else
-      {state.location_absolute, 0} |> dbg
+      {state.location_absolute, 0}
+      # |> dbg
     end
   end
 end

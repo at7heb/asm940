@@ -42,10 +42,17 @@ defmodule A940.Directive do
     do: state
 
   def equ(%State{} = state, :second_call) do
-    {state.address_tokens_list, state.line_number} |> dbg
+    {state.address_tokens_list, state.line_number}
+    # |> dbg
     {val, relocation} = A940.Address.eval(state)
 
-    State.redefine_symbol_value(state, state.flags.label, val, relocation)
+    State.define_symbol_value(
+      state,
+      A940.Pass1.label_name(state.label_tokens),
+      A940.Pass1.label_global(state.label_tokens),
+      val,
+      relocation
+    )
   end
 
   def f_end(%State{} = state, :first_call) do
@@ -62,8 +69,7 @@ defmodule A940.Directive do
   end
 
   def ident(%State{} = state, :first_call) do
-    state.ident |> dbg
-    IO.puts("ident 1st-----------------------------------------------------------")
+    # IO.puts("ident 1st-----------------------------------------------------------")
 
     state =
       cond do
@@ -74,29 +80,55 @@ defmodule A940.Directive do
           raise "IDENT directive must have simple lable line #{state.line_number}"
 
         {:symbol, _} = hd(state.label_tokens) ->
-          ident_name = elem(hd(state.label_tokens), 1) |> dbg
+          ident_name = elem(hd(state.label_tokens), 1)
           %{state | ident: ident_name, flags: %{state.flags | done: true}}
 
         true ->
           raise "IDENT directive label fault line #{state.line_number}"
       end
 
-    {"ident first call", state.ident} |> dbg
+    {"ident first call", state.ident}
     state
   end
 
   def ident(%State{} = state, :second_call) do
     # nothing to do
-    IO.puts("ident 2nd-----------------------------------------------------------")
+    # IO.puts("ident 2nd-----------------------------------------------------------")
     state
   end
 
-  def zro(%State{} = state, :first_cal) do
-    %{state | flags: %{state.flags | done: true}}
-    |> State.add_memory(0, 0)
+  def asc(%State{} = state, :first_call) do
+    IO.puts("ASC first -----------------------------------------------------------")
+    state
+  end
+
+  def asc(%State{} = state, :second_call) do
+    IO.puts("ASC second ------------------------------------------------------")
+    f = ~r/^(\$?[A-Z0-9:]+){0,1} +ASC +(\'(.+)\')|(\"(.+)\")$/
+    asc_string = Regex.run(f, Map.get(state.lines, state.line_number)) |> List.last()
+    line_data = A940.Tokenizer.decode_string_8(asc_string)
+    {asc_string, line_data} |> dbg
+    Enum.reduce(line_data, state, fn word, stt -> State.add_memory(stt, word) end)
+  end
+
+  def zro(%State{} = state, :first_call) do
+    state
   end
 
   def zro(%State{} = state, :second_call) do
-    state
+    # handle both ZRO and ZRO ADDRSS
+    # IO.puts("ZRO ------------------------------------------------")
+    # IO.puts("ZRO #{inspect(state.label_tokens)} -----------------")
+
+    cond do
+      length(state.label_tokens) != 1 ->
+        nil
+
+      [{:symbol, label_name}] = state.label_tokens ->
+        IO.puts("ZRO has address #{label_name}")
+        IO.puts("Symbol value: #{Map.get(state.symbols, label_name) |> inspect}")
+    end
+
+    State.add_memory(state, 0, 0)
   end
 end

@@ -38,7 +38,7 @@ defmodule A940.Conductor do
       |> A940.Pass1.run()
       |> A940.Pass2.run()
 
-    {processed_state.code, processed_state.symbols} |> dbg
+    # {processed_state.code, processed_state.symbols} |> dbg
     processed_state
   end
 end

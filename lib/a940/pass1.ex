@@ -14,24 +14,21 @@ defmodule A940.Pass1 do
   def handle_statement(tokens, %A940.State{} = state) do
     {tokens, state} = get_label_tokens(tokens, state)
     {state.label_tokens, tokens}
-    {state.line_number, state.ident} |> dbg
     {tokens, state} = get_opcode_tokens(tokens, state)
     {state.opcode_tokens, tokens}
-    {state.line_number, state.ident} |> dbg
-    {"processing opcode", state.line_number} |> dbg
-    state.ident |> dbg
+    # {"processing opcode", state.line_number} |> dbg
     state = Op.process_opcode(state)
-    {state.line_number, state.ident} |> dbg
+    # state.operation |> dbg
 
     {_, state} =
       if state.operation.address_class == :no_address,
         do: {[], state},
+        # tokens |> dbg
         else: get_address_tokens(tokens, state)
 
+    # |> dbg
     {state.line_number, state.ident, state.label_tokens, state.opcode_tokens,
      state.operation.address_class, state.operation.address_length, state.address_tokens_list}
-
-    {state.line_number, state.ident} |> dbg
 
     Op.process_opcode_again(state)
   end
@@ -70,7 +67,7 @@ defmodule A940.Pass1 do
     # done_with_statement(state)
   end
 
-  def get_label_tokens([{:comment, _}], %A940.State{} = state) do
+  def get_label_tokens([{:comment, _}, {:eol, ""}], %A940.State{} = state) do
     done_with_statement(state)
   end
 
@@ -120,6 +117,9 @@ defmodule A940.Pass1 do
     {opcode_tokens, rest, terminating_token} = tokens_up_to(tokens, [{:spaces, " "}, {:eol, ""}])
 
     cond do
+      state.flags.done ->
+        {[], state}
+
       terminating_token == {:spaces, " "} or terminating_token == {:eol, ""} ->
         {rest, %{state | opcode_tokens: opcode_tokens}}
 
@@ -275,6 +275,34 @@ defmodule A940.Pass1 do
     )
 
     raise "cannot parse tokens in address fields"
+  end
+
+  def label_name(label_tokens) do
+    cond do
+      length(label_tokens) == 0 ->
+        nil
+
+      length(label_tokens) == 1 ->
+        [{:symbol, label_name}] = label_tokens
+        label_name
+
+      length(label_tokens) == 2 ->
+        [_, {:symbol, label_name}] = label_tokens
+        label_name
+
+      true ->
+        nil
+    end
+  end
+
+  def label_global(label_tokens) do
+    cond do
+      # should true case check for {:delimiter, "$"}, {:symbol, _} ???
+      length(label_tokens) == 0 -> false
+      length(label_tokens) == 1 -> false
+      length(label_tokens) == 2 -> true
+      true -> false
+    end
   end
 
   # defp check_symbols(%State{} = state, tokens_list) do

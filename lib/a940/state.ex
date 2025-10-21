@@ -47,6 +47,22 @@ defmodule A940.State do
     %{state | symbols: new_symbols}
   end
 
+  def define_symbol_value(
+        %__MODULE__{} = state,
+        label_name,
+        label_global?,
+        value,
+        relocation
+      )
+      when is_binary(label_name) and is_boolean(label_global?) and is_integer(value) and
+             is_integer(relocation) do
+    address = Address.new(value, relocation, label_global?)
+    {"define symbol value", address}
+    # |> dbg
+    new_symbols = Map.put(state.symbols, label_name, address)
+    %{state | symbols: new_symbols}
+  end
+
   def redefine_symbol_value(%__MODULE__{} = state, symbol_name, value, relocation)
       when is_binary(symbol_name) do
     old_address_value = Map.get(state.symbols, symbol_name)

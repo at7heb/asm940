@@ -2,7 +2,7 @@ defmodule A940.Op do
   alias A940.State
   alias A940.Address
 
-  # import Bitwise
+  import Bitwise
 
   defstruct value: 0,
             # :maybe_address, :yes_address, :no_address
@@ -23,27 +23,78 @@ defmodule A940.Op do
   defp opcode_table do
     %{}
     |> Map.put("IDENT", new(0, :no_address, 0, &A940.Directive.ident/2))
+    |> Map.put("ASC", new(0, :special_address, 0, &A940.Directive.asc/2))
     |> Map.put("BSS", new(0, :yes_address, 0, &A940.Directive.bss/2))
-    |> Map.put("ZRO", new(0, :no_address, 0, &A940.Directive.zro/2))
-    |> Map.put("DATA", new(0, :yes_address, 0, &A940.Directive.data/2))
+    |> Map.put("ZRO", new(0, :maybe_address, 14, &A940.Directive.zro/2))
+    |> Map.put("DATA", new(0, :yes_address, 24, &A940.Directive.data/2))
     |> Map.put("END", new(0, :no_address, 0, &A940.Directive.f_end/2))
-    |> Map.put("EQU", new(0, :yes_address, 0, &A940.Directive.equ/2))
+    |> Map.put("EQU", new(0, :yes_address, 24, &A940.Directive.equ/2))
+    |> Map.put("HLT", new(0o0000000, :no_address))
     |> Map.put("BRU", new(0o0100000))
+    |> Map.put("ETR", new(0o1400000))
+    |> Map.put("MRG", new(0o1600000))
+    |> Map.put("EOR", new(0o1700000))
+    |> Map.put("NOP", new(0o2000000, :maybe_address))
+    |> Map.put("EXU", new(0o2300000))
     |> Map.put("STA", new(0o3500000))
     |> Map.put("STB", new(0o3600000))
     |> Map.put("STX", new(0o3700000))
+    |> Map.put("SKS", new(0o4000000))
+    |> Map.put("BRX", new(0x4100000))
+    |> Map.put("BRM", new(0x4300000))
+    |> Map.put("SKE", new(0o5000000))
+    |> Map.put("BRR", new(0o5100000))
+    |> Map.put("SKB", new(0o5200000))
+    |> Map.put("SKN", new(0o5300000))
+    |> Map.put("SUB", new(0o5400000))
+    |> Map.put("ADD", new(0o5500000))
+    |> Map.put("SUC", new(0o5600000))
+    |> Map.put("ADC", new(0o5700000))
+    |> Map.put("SKR", new(0o6000000))
+    |> Map.put("MIN", new(0o6100000))
+    |> Map.put("XMA", new(0o6200000))
+    |> Map.put("ADM", new(0o6300000))
+    |> Map.put("MUL", new(0o6400000))
+    |> Map.put("DIV", new(0o6500000))
+    |> Map.put("SKM", new(0o7000000))
     |> Map.put("LDX", new(0o7100000))
+    |> Map.put("SKA", new(0o7200000))
+    |> Map.put("SKG", new(0o7300000))
+    |> Map.put("SKD", new(0o7400000))
     |> Map.put("LDB", new(0o7500000))
     |> Map.put("LDA", new(0o7600000))
     |> Map.put("EAX", new(0o7700000))
-    |> Map.put("NOP", new(0o2000000, :maybe_address))
     |> Map.put("XXA", new(0o4600600, :no_address))
+    |> Map.put("COPY", new(0o4600000, :yes_address))
+    |> Map.put("CLA", new(0, :no_address))
+    |> Map.put("CLB", new(0, :no_address))
+    |> Map.put("CLR", new(0, :no_address))
+    |> Map.put("CAB", new(0, :no_address))
+    |> Map.put("CBA", new(0, :no_address))
+    |> Map.put("XAB", new(0, :no_address))
+    |> Map.put("RSH", new(0, :yes_address, 9))
+    |> Map.put("RCY", new(0, :yes_address, 9))
+    |> Map.put("LRSH", new(0, :yes_address, 9))
+    |> Map.put("LSH", new(0, :yes_address, 9))
+    |> Map.put("LCY", new(0, :yes_address, 9))
+    |> Map.put("NOD", new(0, :yes_address, 9))
+    |> Map.put("OVT", new(0, :no_address))
+    |> Map.put("ROV", new(0, :no_address))
+    |> Map.put("REO", new(0, :no_address))
+    |> Map.put("OTO", new(0, :no_address))
   end
 
   def process_opcode(%State{} = state) do
+    state = handle_label_symbol_definition(state)
+
     cond do
+      state.flags.done ->
+        state
+
       length(state.opcode_tokens) == 2 ->
         [opcode_token, {:delimiter, "*"}] = state.opcode_tokens
+        "2 opcode tokens"
+        # |> dbg
         handle_indirect_op(state, opcode_token)
 
       length(state.opcode_tokens) == 1 ->
@@ -72,25 +123,20 @@ defmodule A940.Op do
         op_structure.processing_function.(state, :first_call)
 
       true ->
+        # do nothing here; it all happens when this is called "again"
         state
     end
   end
 
-  def update_opcode_memory(%State{} = state) do
-    address_value = Address.eval(state, hd(state.address_tokens_list))
+  def update_opcode_memory(%State{} = state, address, tag, mask, indirect)
+      when is_tuple(address) and is_integer(tag) and is_integer(mask) and is_integer(indirect) do
+    {address_value, relocation} = address
+    # would like to assert that relocation is zero if mask is other that 0o37777
+    word =
+      state.operation.value ||| (tag &&& 7) <<< 21 ||| (address_value &&& mask) |||
+        indirect <<< 14
 
-    tag_value =
-      cond do
-        length(state.address_tokens_list) == 1 ->
-          0
-
-        length(state.address_tokens_list) == 2 ->
-          tag_tokens = Enum.at(state.address_tokens_list, 1)
-          Address.eval(state, tag_tokens)
-      end
-
-    {address_value, tag_value} |> dbg
-    State.add_memory(state, state.operation.value, 0)
+    State.add_memory(state, word, relocation)
   end
 
   def handle_indirect_op(%State{} = state, opcode_token) do
@@ -114,20 +160,13 @@ defmodule A940.Op do
           process_op_not_directive(state)
       end
 
-    state.operation
-    |> dbg
-
-    state.code
-    |> dbg
-
-    state.address_tokens_list
-    |> dbg
-
     state
   end
 
   def process_op_not_directive(%State{} = state) do
-    tag =
+    # TODO update to handle cases where address_tokens_list evaluates to an expression instead
+    # of a nmber.
+    tag_tuple =
       cond do
         length(state.address_tokens_list) == 2 ->
           Address.eval(state, Enum.at(state.address_tokens_list, 1))
@@ -136,9 +175,12 @@ defmodule A940.Op do
           {0, 0}
       end
 
+    {tag, 0} =
+      tag_tuple
+
     address =
       cond do
-        length(state.address_tokens_list) > 1 ->
+        length(state.address_tokens_list) >= 1 ->
           Address.eval(state, hd(state.address_tokens_list))
 
         true ->
@@ -147,13 +189,34 @@ defmodule A940.Op do
 
     mask =
       cond do
+        state.operation.address_length == 24 -> 0o77777777
         state.operation.address_length == 14 -> 0o37777
         state.operation.address_length == 9 -> 0o777
         true -> 0
       end
 
-    {address, tag, mask} |> dbg
-    state
-    # state.update_opcode_memory(state)
+    indirect =
+      cond do
+        state.flags.indirect -> 1
+        true -> 0
+      end
+
+    update_opcode_memory(state, address, tag, mask, indirect)
+  end
+
+  def handle_label_symbol_definition(%State{} = state) do
+    cond do
+      length(state.label_tokens) == 0 ->
+        state
+
+      length(state.label_tokens) == 1 ->
+        {:symbol, label_name} = state.label_tokens |> hd()
+        State.update_symbol_table(state, label_name, false)
+
+      length(state.label_tokens) == 2 ->
+        {:symbol, label_name} = state.label_tokens |> Enum.at(1)
+        {:delimiter, "$"} = state.label_tokens |> Enum.at(0)
+        State.update_symbol_table(state, label_name, true)
+    end
   end
 end

@@ -137,5 +137,10 @@ defmodule A940.Tokenizer do
     {rv, v}
   end
 
-  # defp decode_string_8(v), do: v
+  def decode_string_8(v) do
+    String.to_charlist(v)
+    |> Enum.map(fn ch -> ch - 32 &&& 0o177 end)
+    |> Enum.chunk_every(3, 3, [0, 0])
+    |> Enum.map(fn [h, m, l] -> h <<< 16 ||| m <<< 8 ||| l end)
+  end
 end
