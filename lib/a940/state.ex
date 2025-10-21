@@ -57,17 +57,23 @@ defmodule A940.State do
       when is_binary(label_name) and is_boolean(label_global?) and is_integer(value) and
              is_integer(relocation) do
     address = Address.new(value, relocation, label_global?)
-    {"define symbol value", address}
+    # {"define symbol value", address}
     # |> dbg
     new_symbols = Map.put(state.symbols, label_name, address)
     %{state | symbols: new_symbols}
   end
 
+  def redefine_symbol_value(%__MODULE__{} = state, symbol_name) do
+    {value, relocation} = current_location(state)
+    redefine_symbol_value(state, symbol_name, value, relocation)
+  end
+
   def redefine_symbol_value(%__MODULE__{} = state, symbol_name, value, relocation)
       when is_binary(symbol_name) do
     old_address_value = Map.get(state.symbols, symbol_name)
-    {value, relocation} |> dbg
-    new_address_value = Address.new(value, relocation, old_address_value.exported?) |> dbg
+    # {"redefine_symbol_value", value, relocation} |> dbg
+    new_address_value = Address.new(value, relocation, old_address_value.exported?)
+    # |> dbg
     new_symbols = Map.put(state.symbols, symbol_name, new_address_value)
     %{state | symbols: new_symbols}
   end
@@ -119,5 +125,13 @@ defmodule A940.State do
             A940.MemoryValue.merge_value(current_word, tag_value <<< 21)
           )
     }
+  end
+
+  def current_location(%__MODULE__{} = state) do
+    address_value =
+      if state.flags.relocating, do: state.location_relative, else: state.location_absolute
+
+    address_relocation = if state.flags.relocating, do: 1, else: 0
+    {address_value, address_relocation}
   end
 end

@@ -24,6 +24,7 @@ defmodule A940.Op do
     %{}
     |> Map.put("IDENT", new(0, :no_address, 0, &A940.Directive.ident/2))
     |> Map.put("ASC", new(0, :special_address, 0, &A940.Directive.asc/2))
+    |> Map.put("BES", new(0, :yes_address, 0, &A940.Directive.bes/2))
     |> Map.put("BSS", new(0, :yes_address, 0, &A940.Directive.bss/2))
     |> Map.put("ZRO", new(0, :maybe_address, 14, &A940.Directive.zro/2))
     |> Map.put("DATA", new(0, :yes_address, 24, &A940.Directive.data/2))

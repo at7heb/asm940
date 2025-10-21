@@ -1,6 +1,37 @@
 defmodule A940.Directive do
   alias A940.State
 
+  def bes(%State{} = state, :first_call),
+    do: state
+
+  def bes(%State{} = state, :second_call) do
+    {val, relocation} = A940.Address.eval(state)
+
+    cond do
+      not (is_integer(val) and is_integer(relocation)) ->
+        raise "BSS on line #{state.line_number} - illegal operand"
+
+      # val < 1 or  ... BSS 0 is legal???
+      val > 16383 ->
+        raise("BSS on line #{state.line_number} of #{val} words is illegal")
+
+      relocation != 0 ->
+        raise("BSS on line #{state.line_number} has illegal relocation=#{relocation}")
+
+      true ->
+        save_label_tokens = state.label_tokens
+        state = %{state | label_tokens: []}
+        state = Enum.reduce(1..val, state, fn _n, state -> zro(state, :second_call) end)
+        # def redefine_symbol_value(%__MODULE__{} = state, symbol_name, value, relocation)
+        state = %{state | label_tokens: save_label_tokens}
+
+        State.redefine_symbol_value(
+          state,
+          A940.Pass1.label_name(state.label_tokens)
+        )
+    end
+  end
+
   def bss(%State{} = state, :first_call),
     do: state
 
@@ -98,16 +129,13 @@ defmodule A940.Directive do
   end
 
   def asc(%State{} = state, :first_call) do
-    IO.puts("ASC first -----------------------------------------------------------")
     state
   end
 
   def asc(%State{} = state, :second_call) do
-    IO.puts("ASC second ------------------------------------------------------")
     f = ~r/^(\$?[A-Z0-9:]+){0,1} +ASC +(\'(.+)\')|(\"(.+)\")$/
     asc_string = Regex.run(f, Map.get(state.lines, state.line_number)) |> List.last()
     line_data = A940.Tokenizer.decode_string_8(asc_string)
-    {asc_string, line_data} |> dbg
     Enum.reduce(line_data, state, fn word, stt -> State.add_memory(stt, word) end)
   end
 
@@ -120,14 +148,14 @@ defmodule A940.Directive do
     # IO.puts("ZRO ------------------------------------------------")
     # IO.puts("ZRO #{inspect(state.label_tokens)} -----------------")
 
-    cond do
-      length(state.label_tokens) != 1 ->
-        nil
+    # cond do
+    #   length(state.label_tokens) != 1 ->
+    #     nil
 
-      [{:symbol, label_name}] = state.label_tokens ->
-        IO.puts("ZRO has address #{label_name}")
-        IO.puts("Symbol value: #{Map.get(state.symbols, label_name) |> inspect}")
-    end
+    #   [{:symbol, label_name}] = state.label_tokens ->
+    #     IO.puts("ZRO has address #{label_name}")
+    #     IO.puts("Symbol value: #{Map.get(state.symbols, label_name) |> inspect}")
+    # end
 
     State.add_memory(state, 0, 0)
   end

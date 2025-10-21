@@ -105,7 +105,9 @@ defmodule AssemblerTest do
     ]
 
     a_out = A940.Conductor.runner(source)
-    a_out |> dbg
+    bru_instruction = Map.get(a_out.code, 2)
+    assert bru_instruction.value == 0o0100007
+    assert bru_instruction.relocation_value == 0
   end
 
   test "ASC tests" do
@@ -114,10 +116,46 @@ defmodule AssemblerTest do
       " ASC 'ABC'",
       "A1 ASC 'DEF'",
       "$A2 ASC \"GHI\"",
+      "A3 ASC 'TWAS BRILLIG AND THE ...'",
       " END"
     ]
 
     a_out = A940.Conductor.runner(source)
-    a_out |> dbg
+    ghi = Map.get(a_out.code, 2)
+    assert ghi.value == 0x272829
+    assert ghi.relocation_value == 0
+  end
+
+  test "BES & BSS tests" do
+    length = 10
+
+    source = [
+      "A IDENT",
+      "BB BES #{length}",
+      "$CC BES #{length + 5}",
+      "DD BSS 5",
+      " END"
+    ]
+
+    a_out = A940.Conductor.runner(source)
+    # check BB symbol
+    symbol_value = Map.get(a_out.symbols, "BB")
+    assert symbol_value.value == length
+    assert symbol_value.relocation == 1
+    assert not symbol_value.exported?
+    # check CC symbol
+    symbol_value = Map.get(a_out.symbols, "CC")
+    assert symbol_value.value == length + length + 5
+    assert symbol_value.relocation == 1
+    assert symbol_value.exported?
+    # DD symbol - almost the same as CC
+    symbol_value = Map.get(a_out.symbols, "DD")
+    assert symbol_value.value == length + length + 5
+    assert symbol_value.relocation == 1
+    assert not symbol_value.exported?
+    # check no extra symbols (A in IDENT counts as one)
+    assert length(Map.keys(a_out.symbols)) == 4
+    # check no extra memory
+    assert length(Map.keys(a_out.code)) == length + length + 5 + 5
   end
 end
