@@ -158,4 +158,16 @@ defmodule AssemblerTest do
     # check no extra memory
     assert length(Map.keys(a_out.code)) == length + length + 5 + 5
   end
+
+  test "COPY tests" do
+    source = [
+      "A IDENT",
+      " COPY AB,BA,E",
+      " END"
+    ]
+
+    a_out = A940.Conductor.runner(source)
+    mem = Map.get(a_out.code, 0)
+    assert mem.value == 0o04600114
+  end
 end

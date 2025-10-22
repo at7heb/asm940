@@ -1,4 +1,6 @@
 defmodule A940.Directive do
+  import Bitwise
+
   alias A940.State
 
   def bes(%State{} = state, :first_call),
@@ -52,6 +54,18 @@ defmodule A940.Directive do
       true ->
         Enum.reduce(1..val, state, fn _n, state -> zro(state, :second_call) end)
     end
+  end
+
+  def copy(%State{} = state, :first_call),
+    do: state
+
+  @rch_instruction 0o04600000
+  def copy(%State{} = state, :second_call) do
+    address_field =
+      Enum.reduce(state.address_tokens_list, 0, fn token, field -> copy_token(token, field) end)
+
+    word = @rch_instruction ||| address_field
+    State.add_memory(state, word, 0)
   end
 
   def data(%State{} = state, :first_call),
@@ -158,5 +172,26 @@ defmodule A940.Directive do
     # end
 
     State.add_memory(state, 0, 0)
+  end
+
+  # helpers
+
+  def b(n) when is_integer(n) and n >= 0 and n <= 23, do: 0o40000000 >>> n
+
+  def copy_token([{:symbol, copy_mnemonic}], field) do
+    case copy_mnemonic do
+      "A" -> b(23)
+      "B" -> b(22)
+      "AB" -> b(21)
+      "BA" -> b(20)
+      "BX" -> b(19)
+      "XB" -> b(18)
+      "E" -> b(17)
+      "XA" -> b(16)
+      "AX" -> b(15)
+      "N" -> b(14)
+      "X" -> b(1)
+      _ -> raise "Illegal register change mnemonic #{copy_mnemonic}"
+    end ||| field
   end
 end
