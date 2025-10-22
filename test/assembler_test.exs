@@ -170,4 +170,28 @@ defmodule AssemblerTest do
     mem = Map.get(a_out.code, 0)
     assert mem.value == 0o04600114
   end
+
+  test "DEC test" do
+    source = [
+      "A IDENT",
+      " DEC",
+      " END"
+    ]
+
+    err = "DEC operative is not implemented"
+
+    assert_raise RuntimeError, err, fn -> A940.Conductor.runner(source) end
+  end
+
+  test "OCT test" do
+    source = [
+      "A IDENT",
+      " OCT",
+      " END"
+    ]
+
+    err = "OCT operative is not implemented"
+
+    assert_raise RuntimeError, err, fn -> A940.Conductor.runner(source) end
+  end
 end

@@ -83,6 +83,9 @@ defmodule A940.Directive do
     end
   end
 
+  def dec(%State{} = state, _),
+    do: raise("DEC operative is not implemented")
+
   def equ(%State{} = state, :first_call),
     do: state
 
@@ -152,6 +155,9 @@ defmodule A940.Directive do
     line_data = A940.Tokenizer.decode_string_8(asc_string)
     Enum.reduce(line_data, state, fn word, stt -> State.add_memory(stt, word) end)
   end
+
+  def oct(%State{} = state, _),
+    do: raise("OCT operative is not implemented")
 
   def zro(%State{} = state, :first_call) do
     state
