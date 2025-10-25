@@ -101,6 +101,8 @@ defmodule AssemblerTest do
       "$LAST EQU *",
       "C1 ZRO",
       "$C2 ZRO",
+      # " ZRO",
+      "LAST EQU *",
       " END"
     ]
 
@@ -154,7 +156,7 @@ defmodule AssemblerTest do
     assert symbol_value.relocation == 1
     assert not symbol_value.exported?
     # check no extra symbols (A in IDENT counts as one)
-    assert length(Map.keys(a_out.symbols)) == 4
+    assert length(Map.keys(a_out.symbols)) == 3
     # check no extra memory
     assert length(Map.keys(a_out.code)) == length + length + 5 + 5
   end

@@ -9,29 +9,38 @@ defmodule A940.Op do
             address_class: :maybe_address,
             # 0, 9 or 14, but 14 if :yes_address with indirect bit
             address_length: 14,
-            processing_function: nil
+            processing_function: nil,
+            define_location?: true
 
-  def new(value, class \\ :yes_address, address_length \\ 14, processing_function \\ nil) do
+  def new(
+        value,
+        class \\ :yes_address,
+        address_length \\ 14,
+        processing_function \\ nil,
+        define_location \\ true
+      ) do
     %__MODULE__{
       value: value,
       address_class: class,
       address_length: address_length,
-      processing_function: processing_function
+      processing_function: processing_function,
+      define_location?: define_location
     }
   end
 
   defp opcode_table do
     %{}
-    |> Map.put("IDENT", new(0, :no_address, 0, &A940.Directive.ident/2))
+    |> Map.put("IDENT", new(0, :no_address, 0, &A940.Directive.ident/2, false))
     |> Map.put("ASC", new(0, :special_address, 0, &A940.Directive.asc/2))
-    |> Map.put("BES", new(0, :yes_address, 0, &A940.Directive.bes/2))
+    |> Map.put("BES", new(0, :yes_address, 0, &A940.Directive.bes/2, false))
     |> Map.put("BSS", new(0, :yes_address, 0, &A940.Directive.bss/2))
     |> Map.put("COPY", new(0, :yes_address, 24, &A940.Directive.copy/2))
     |> Map.put("DATA", new(0, :yes_address, 24, &A940.Directive.data/2))
-    |> Map.put("DEC", new(0, :yes_address, 24, &A940.Directive.dec/2))
-    |> Map.put("END", new(0, :no_address, 0, &A940.Directive.f_end/2))
-    |> Map.put("EQU", new(0, :yes_address, 24, &A940.Directive.equ/2))
-    |> Map.put("OCT", new(0, :maybe_address, 14, &A940.Directive.oct/2))
+    |> Map.put("DEC", new(0, :yes_address, 24, &A940.Directive.dec/2, false))
+    |> Map.put("DELSYM", new(0, :no_address, 0, &A940.Directive.delsym/2, false))
+    |> Map.put("END", new(0, :no_address, 0, &A940.Directive.f_end/2, false))
+    |> Map.put("EQU", new(0, :yes_address, 24, &A940.Directive.equ/2, false))
+    |> Map.put("OCT", new(0, :maybe_address, 14, &A940.Directive.oct/2, false))
     |> Map.put("ZRO", new(0, :maybe_address, 14, &A940.Directive.zro/2))
     |> Map.put("HLT", new(0o0000000, :no_address))
     |> Map.put("BRU", new(0o0100000))
@@ -90,16 +99,13 @@ defmodule A940.Op do
   end
 
   def process_opcode(%State{} = state) do
-    state = handle_label_symbol_definition(state)
-
     cond do
       state.flags.done ->
         state
 
       length(state.opcode_tokens) == 2 ->
         [opcode_token, {:delimiter, "*"}] = state.opcode_tokens
-        "2 opcode tokens"
-        # |> dbg
+
         handle_indirect_op(state, opcode_token)
 
       length(state.opcode_tokens) == 1 ->
@@ -122,6 +128,12 @@ defmodule A940.Op do
     # does this apply to macro calls?
     # the value of this cond is immaterial and ignored; it is used only for the *raise* side effect
     state = %{state | operation: op_structure}
+
+    state =
+      cond do
+        op_structure.define_location? -> handle_label_symbol_definition(state)
+        true -> state
+      end
 
     cond do
       op_structure.processing_function != nil ->

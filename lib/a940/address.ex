@@ -20,9 +20,10 @@ defmodule A940.Address do
             expression_tokens: [],
             b14?: true,
             exported?: false,
-            external?: false
+            external?: false,
+            forgotten?: false
 
-  def new(value, relocation, exported \\ false, b14? \\ false)
+  def new(value, relocation, exported \\ false, b14? \\ false, forgotten? \\ false)
       when is_integer(value) and is_integer(relocation) and is_boolean(exported) and
              is_boolean(b14?) do
     mask =
@@ -31,7 +32,12 @@ defmodule A940.Address do
         true -> 0o77777777
       end
 
-    %__MODULE__{value: value &&& mask, relocation: relocation, exported?: exported}
+    %__MODULE__{
+      value: value &&& mask,
+      relocation: relocation,
+      exported?: exported,
+      forgotten?: forgotten?
+    }
   end
 
   def new_expression(expression, exported \\ false) when is_list(expression),

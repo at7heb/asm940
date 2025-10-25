@@ -23,7 +23,8 @@ defmodule A940.State do
             # this starts at value of RELORG and counts up until RETREL
             location_absolute: 0,
             ident: "",
-            line_number: 0
+            line_number: 0,
+            output_symbols: true
 
   def new(lines) do
     {_count, line_map} =
@@ -36,13 +37,21 @@ defmodule A940.State do
 
   def update_symbol_table(%__MODULE__{} = state, symbol_name, exported? \\ false)
       when is_binary(symbol_name) do
+    # {"Symbol---------------------- Set", Process.info(self(), :current_stacktrace)} |> dbg
+
     address_value =
       if state.flags.relocating, do: state.location_relative, else: state.location_absolute
 
     address_relocation = if state.flags.relocating, do: 1, else: 0
     new_address = Address.new(address_value, address_relocation, exported?)
     old_address = Map.get(state.symbols, symbol_name)
-    if nil != old_address, do: raise("multiply defined symbol: #{symbol_name} ")
+
+    if nil != old_address do
+      IO.puts("MD #{Map.get(state.lines, state.line_number)}")
+      IO.puts("MD sym #{inspect(old_address)}")
+      raise("multiply defined symbol: #{symbol_name} ")
+    end
+
     new_symbols = Map.put(state.symbols, symbol_name, new_address)
     %{state | symbols: new_symbols}
   end
@@ -56,31 +65,58 @@ defmodule A940.State do
       )
       when is_binary(label_name) and is_boolean(label_global?) and is_integer(value) and
              is_integer(relocation) do
+    # {"Symbol---------------------- Set", Process.info(self(), :current_stacktrace)} |> dbg
     address = Address.new(value, relocation, label_global?)
     # {"define symbol value", address}
     # |> dbg
+    old_symbol = Map.get(state.symbols, label_name)
+
+    if old_symbol != nil do
+      IO.puts("MD #{Map.get(state.lines, state.line_number)}")
+      IO.puts("MD sym #{inspect(old_symbol)}")
+      raise "Duplicate symbol definition symbol #{label_name} line #{state.line_number}"
+    end
+
     new_symbols = Map.put(state.symbols, label_name, address)
     %{state | symbols: new_symbols}
   end
 
-  def redefine_symbol_value(%__MODULE__{} = state, symbol_name) do
-    {value, relocation} = current_location(state)
-    redefine_symbol_value(state, symbol_name, value, relocation)
-  end
+  # def redefine_symbol_value(%__MODULE__{} = state, symbol_name) do
+  #   {value, relocation} = current_location(state)
+  #   redefine_symbol_value(state, symbol_name, value, relocation)
+  # end
 
-  def redefine_symbol_value(%__MODULE__{} = state, symbol_name, value, relocation)
+  def redefine_symbol_value(%__MODULE__{} = state, symbol_name, value, relocation, exported?)
       when is_binary(symbol_name) do
+    # {"Symbol---------------------- Set", Process.info(self(), :current_stacktrace)} |> dbg
     old_address_value = Map.get(state.symbols, symbol_name)
-    # {"redefine_symbol_value", value, relocation} |> dbg
-    new_address_value = Address.new(value, relocation, old_address_value.exported?)
-    # |> dbg
+
+    new_address_value =
+      cond do
+        old_address_value == nil ->
+          # "redefine_symbol_value first definition" |> dbg
+          Address.new(value, relocation, exported?)
+
+        true ->
+          # "redefine_symbol_value subsequent definition" |> dbg
+
+          Address.new(
+            value,
+            relocation,
+            old_address_value.exported? or exported?,
+            old_address_value.forgotten?
+          )
+      end
+
     new_symbols = Map.put(state.symbols, symbol_name, new_address_value)
+
     %{state | symbols: new_symbols}
   end
 
   # This is used when the label isn't for an address, like if it is a macro
   def remove_symbol(%__MODULE__{} = state, symbol_name)
       when is_binary(symbol_name) do
+    # {"Symbol---------------------- Removal", Process.info(self(), :current_stacktrace)} |> dbg
     new_symbols = Map.delete(state.symbols, symbol_name)
     %{state | symbols: new_symbols}
   end

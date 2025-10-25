@@ -24,13 +24,7 @@ defmodule A940.Directive do
         save_label_tokens = state.label_tokens
         state = %{state | label_tokens: []}
         state = Enum.reduce(1..val, state, fn _n, state -> zro(state, :second_call) end)
-        # def redefine_symbol_value(%__MODULE__{} = state, symbol_name, value, relocation)
-        state = %{state | label_tokens: save_label_tokens}
-
-        State.redefine_symbol_value(
-          state,
-          A940.Pass1.label_name(state.label_tokens)
-        )
+        A940.Op.handle_label_symbol_definition(%{state | label_tokens: save_label_tokens})
     end
   end
 
@@ -83,8 +77,12 @@ defmodule A940.Directive do
     end
   end
 
-  def dec(%State{} = state, _),
+  def dec(%State{} = _state, _),
     do: raise("DEC operative is not implemented")
+
+  def delsym(%State{} = state, _) do
+    %{state | output_symbols: false}
+  end
 
   def equ(%State{} = state, :first_call),
     do: state
@@ -94,12 +92,14 @@ defmodule A940.Directive do
     # |> dbg
     {val, relocation} = A940.Address.eval(state)
 
-    State.define_symbol_value(
+    # okay to re-define a symbol
+    # state, symbol_name, value, ?, relocation, exported)
+    State.redefine_symbol_value(
       state,
       A940.Pass1.label_name(state.label_tokens),
-      A940.Pass1.label_global(state.label_tokens),
       val,
-      relocation
+      relocation,
+      A940.Pass1.label_global(state.label_tokens)
     )
   end
 
@@ -156,7 +156,7 @@ defmodule A940.Directive do
     Enum.reduce(line_data, state, fn word, stt -> State.add_memory(stt, word) end)
   end
 
-  def oct(%State{} = state, _),
+  def oct(%State{} = _state, _),
     do: raise("OCT operative is not implemented")
 
   def zro(%State{} = state, :first_call) do
