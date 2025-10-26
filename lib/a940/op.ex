@@ -40,6 +40,7 @@ defmodule A940.Op do
     |> Map.put("DELSYM", new(0, :no_address, 0, &A940.Directive.delsym/2, false))
     |> Map.put("END", new(0, :no_address, 0, &A940.Directive.f_end/2, false))
     |> Map.put("EQU", new(0, :yes_address, 24, &A940.Directive.equ/2, false))
+    |> Map.put("EXT", new(0, :yes_address, 24, &A940.Directive.ext/2, false))
     |> Map.put("OCT", new(0, :maybe_address, 14, &A940.Directive.oct/2, false))
     |> Map.put("ZRO", new(0, :maybe_address, 14, &A940.Directive.zro/2))
     |> Map.put("HLT", new(0o0000000, :no_address))

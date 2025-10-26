@@ -196,4 +196,27 @@ defmodule AssemblerTest do
 
     assert_raise RuntimeError, err, fn -> A940.Conductor.runner(source) end
   end
+
+  test "EXT test" do
+    source = [
+      "Z IDENT",
+      "A EXT *",
+      " ZRO",
+      "B LDA 77",
+      "B EXT",
+      "C LDX 5",
+      # " EXT 7",
+      " END"
+    ]
+
+    a_out = A940.Conductor.runner(source)
+    symbols = a_out.symbols
+    [a_address, b_address, c_address] = Enum.map(["A", "B", "C"], &Map.get(symbols, &1))
+    assert a_address.value == 0
+    assert a_address.exported?
+    assert b_address.value == 1
+    assert b_address.exported?
+    assert c_address.value == 2
+    assert not c_address.exported?
+  end
 end

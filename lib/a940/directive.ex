@@ -88,8 +88,6 @@ defmodule A940.Directive do
     do: state
 
   def equ(%State{} = state, :second_call) do
-    {state.address_tokens_list, state.line_number}
-    # |> dbg
     {val, relocation} = A940.Address.eval(state)
 
     # okay to re-define a symbol
@@ -101,6 +99,46 @@ defmodule A940.Directive do
       relocation,
       A940.Pass1.label_global(state.label_tokens)
     )
+  end
+
+  def ext(%State{} = state, :first_call),
+    do: state
+
+  def ext(%State{} = state, :second_call) do
+    label = A940.Pass1.label_name(state.label_tokens)
+
+    cond do
+      label == nil ->
+        raise "EXT must have label line in statement \##{state.line_number}"
+
+      state.address_tokens_list != [[]] ->
+        # value to be assigned; just make it exportable
+        {val, relocation} = A940.Address.eval(state)
+
+        State.redefine_symbol_value(
+          state,
+          label,
+          val,
+          relocation,
+          true
+        )
+
+      Map.get(state.symbols, label) != nil ->
+        # symbol previously defined, make exported
+        address = Map.get(state.symbols, label)
+
+        State.redefine_symbol_value(
+          state,
+          label,
+          address.value,
+          address.relocation,
+          true
+        )
+
+      true ->
+        # undefined - an error.
+        raise "Symbol #{label} in EXT directive line #{state.line_number} must be previously defined"
+    end
   end
 
   def f_end(%State{} = state, :first_call) do
