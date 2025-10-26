@@ -223,4 +223,31 @@ defmodule AssemblerTest do
     assert last.value == 0o31_062_144
     assert last.relocation_value == 0
   end
+
+  test "FREEZE smoke test" do
+    source = [
+      "Z IDENT",
+      " FIILIB",
+      "A EXT *",
+      " ZRO",
+      "B LDA 77",
+      "B EXT",
+      "C LDX 5",
+      "D EXT 7",
+      " FREEZE",
+      " END"
+    ]
+
+    _a_out = A940.Conductor.runner(source)
+    [keys: symbol_keys] = :ets.lookup(:symbols, :keys)
+    [keys: macro_keys] = :ets.lookup(:macros, :keys)
+    assert is_list(symbol_keys)
+    assert length(symbol_keys) == 4
+    assert is_list(macro_keys)
+    assert length(macro_keys) == 0
+    {"C", c_sym} = hd(:ets.lookup(:symbols, "C"))
+    assert c_sym.value == 2
+    assert c_sym.relocation == 1
+    assert not c_sym.exported?
+  end
 end

@@ -150,6 +150,18 @@ defmodule A940.Directive do
     %{state | f2lib?: true}
   end
 
+  def freeze(%State{} = state, :first_call), do: state
+
+  def freeze(%State{} = state, :second_call) do
+    :ets.new(:symbols, [:set, :protected, :named_table])
+    Enum.map(Map.to_list(state.symbols), &:ets.insert(:symbols, &1))
+    :ets.insert(:symbols, {:keys, Map.keys(state.symbols)})
+    :ets.new(:macros, [:set, :protected, :named_table])
+    Enum.map(Map.to_list(state.macros), &:ets.insert(:macros, &1))
+    :ets.insert(:macros, {:keys, Map.keys(state.macros)})
+    state
+  end
+
   def f_end(%State{} = state, :first_call) do
     if state.ident == "" do
       raise "No IDENT directive"
