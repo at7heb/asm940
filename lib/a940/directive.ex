@@ -170,6 +170,12 @@ defmodule A940.Directive do
     end)
   end
 
+  def frgtop(%State{} = state, :first_call), do: state
+
+  def frgtop(%State{} = state, :second_call) do
+    raise "FRGTOP not implemented (line #{state.line_number})"
+  end
+
   def frgt_symbol(%State{} = state, [symbol: symbol_name] = _symbol) do
     address = Map.get(state.symbols, symbol_name)
     new_address = %{address | forgotten?: true}

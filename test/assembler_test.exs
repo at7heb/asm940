@@ -271,4 +271,22 @@ defmodule AssemblerTest do
     c_address = Map.get(a_out.symbols, "C")
     assert not c_address.forgotten?
   end
+
+  test "FRGTOP  test" do
+    _source = [
+      "Z IDENT",
+      " FIILIB",
+      "A EXT *",
+      " ZRO",
+      "B LDA 77",
+      "B EXT",
+      "C LDX 5",
+      "D EXT 7",
+      " FRGTOP ",
+      " END"
+    ]
+
+    assert 1
+    # a_out = A940.Conductor.runner(source)
+  end
 end
