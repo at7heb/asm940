@@ -197,9 +197,10 @@ defmodule AssemblerTest do
     assert_raise RuntimeError, err, fn -> A940.Conductor.runner(source) end
   end
 
-  test "EXT test" do
+  test "EXT & FIILIB test" do
     source = [
       "Z IDENT",
+      " FIILIB",
       "A EXT *",
       " ZRO",
       "B LDA 77",
@@ -218,5 +219,8 @@ defmodule AssemblerTest do
     assert b_address.exported?
     assert c_address.value == 2
     assert not c_address.exported?
+    last = Map.get(a_out.code, 3)
+    assert last.value == 0o31_062_144
+    assert last.relocation_value == 0
   end
 end

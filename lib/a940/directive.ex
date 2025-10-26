@@ -3,6 +3,8 @@ defmodule A940.Directive do
 
   alias A940.State
 
+  @magic_end_of_program 0o31_062_144
+
   def bes(%State{} = state, :first_call),
     do: state
 
@@ -141,6 +143,13 @@ defmodule A940.Directive do
     end
   end
 
+  def f2lib(%State{} = state, :first_call), do: state
+
+  def f2lib(%State{} = state, :second_call) do
+    # add program separator word, 0o31_062_144 after each end statement
+    %{state | f2lib?: true}
+  end
+
   def f_end(%State{} = state, :first_call) do
     if state.ident == "" do
       raise "No IDENT directive"
@@ -151,7 +160,10 @@ defmodule A940.Directive do
   end
 
   def f_end(%State{} = state, :second_call) do
-    state
+    cond do
+      state.f2lib? -> State.add_memory(state, @magic_end_of_program, 0)
+      true -> state
+    end
   end
 
   def ident(%State{} = state, :first_call) do

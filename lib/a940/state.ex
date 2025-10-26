@@ -24,7 +24,8 @@ defmodule A940.State do
             location_absolute: 0,
             ident: "",
             line_number: 0,
-            output_symbols: true
+            output_symbols: true,
+            f2lib?: false
 
   def new(lines) do
     {_count, line_map} =
