@@ -43,6 +43,7 @@ defmodule A940.Op do
     |> Map.put("EXT", new(0, :maybe_address, 24, &A940.Directive.ext/2, false))
     |> Map.put("FIILIB", new(0, :no_address, 24, &A940.Directive.f2lib/2, false))
     |> Map.put("FREEZE", new(0, :no_address, 24, &A940.Directive.freeze/2, false))
+    |> Map.put("FRGT", new(0, :special_address, 0, &A940.Directive.frgt/2, false))
     |> Map.put("OCT", new(0, :maybe_address, 14, &A940.Directive.oct/2, false))
     |> Map.put("ZRO", new(0, :maybe_address, 14, &A940.Directive.zro/2))
     |> Map.put("HLT", new(0o0000000, :no_address))

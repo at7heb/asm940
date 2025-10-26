@@ -250,4 +250,25 @@ defmodule AssemblerTest do
     assert c_sym.relocation == 1
     assert not c_sym.exported?
   end
+
+  test "FRGT  test" do
+    source = [
+      "Z IDENT",
+      " FIILIB",
+      "A EXT *",
+      " ZRO",
+      "B LDA 77",
+      "B EXT",
+      "C LDX 5",
+      "D EXT 7",
+      " FRGT B",
+      " END"
+    ]
+
+    a_out = A940.Conductor.runner(source)
+    b_address = Map.get(a_out.symbols, "B")
+    assert b_address.forgotten?
+    c_address = Map.get(a_out.symbols, "C")
+    assert not c_address.forgotten?
+  end
 end

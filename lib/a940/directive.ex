@@ -162,6 +162,21 @@ defmodule A940.Directive do
     state
   end
 
+  def frgt(%State{} = state, :first_call), do: state
+
+  def frgt(%State{} = state, :second_call) do
+    Enum.reduce(state.address_tokens_list, state, fn symbol_name, state ->
+      frgt_symbol(state, symbol_name)
+    end)
+  end
+
+  def frgt_symbol(%State{} = state, [symbol: symbol_name] = _symbol) do
+    address = Map.get(state.symbols, symbol_name)
+    new_address = %{address | forgotten?: true}
+    new_symbols = Map.put(state.symbols, symbol_name, new_address)
+    %{state | symbols: new_symbols}
+  end
+
   def f_end(%State{} = state, :first_call) do
     if state.ident == "" do
       raise "No IDENT directive"
