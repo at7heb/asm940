@@ -28,6 +28,7 @@ defmodule A940.Conductor do
   def runs(s), do: runcount(s, 70)
 
   defp process(lines) when is_list(lines) do
+    A940.Op.new_opcode_table()
     process(A940.State.new(lines))
   end
 

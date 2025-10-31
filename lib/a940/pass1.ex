@@ -11,26 +11,37 @@ defmodule A940.Pass1 do
     end)
   end
 
+  def handle_statement([eol: ""], %A940.State{} = state),
+    do: state
+
   def handle_statement(tokens, %A940.State{} = state) do
+    IO.puts("Line #{state.line_number} -------------------------------")
+    # state = %{state | operation: nil}
     {tokens, state} = get_label_tokens(tokens, state)
-    {state.label_tokens, tokens}
-    {tokens, state} = get_opcode_tokens(tokens, state)
-    {state.opcode_tokens, tokens}
-    # {"processing opcode", state.line_number} |> dbg
-    state = Op.process_opcode(state)
-    # state.operation |> dbg
 
-    {_, state} =
-      if state.operation.address_class == :no_address,
-        do: {[], state},
-        # tokens |> dbg
-        else: get_address_tokens(tokens, state)
+    if not state.flags.done do
+      {tokens, state} = get_opcode_tokens(tokens, state)
+      # {"processing opcode", state.line_number} |> dbg
+      state = Op.process_opcode(state)
+      # state.operation |> dbg
 
-    # |> dbg
-    {state.line_number, state.ident, state.label_tokens, state.opcode_tokens,
-     state.operation.address_class, state.operation.address_length, state.address_tokens_list}
+      {_, state} =
+        if state.operation.address_class == :no_address,
+          do: {[], state},
+          # tokens |> dbg
+          else: get_address_tokens(tokens, state)
 
-    Op.process_opcode_again(state)
+      # |> dbg
+      if state.line_number == 61 do
+        {state.line_number, state.ident, state.label_tokens, state.opcode_tokens,
+         state.address_tokens_list, Enum.at(state.tokens_list, 60)}
+        |> dbg
+      end
+
+      Op.process_opcode_again(state)
+    else
+      state
+    end
   end
 
   def update_state_for_next_statement(%A940.State{} = state, linenumber)
@@ -68,6 +79,7 @@ defmodule A940.Pass1 do
   end
 
   def get_label_tokens([{:comment, _}, {:eol, ""}], %A940.State{} = state) do
+    # {state.line_number, Enum.at(state.tokens_list, state.line_number - 1)} |> dbg
     done_with_statement(state)
   end
 

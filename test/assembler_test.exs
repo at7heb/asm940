@@ -1,10 +1,12 @@
 defmodule AssemblerTest do
   use ExUnit.Case
 
+  alias A940.Conductor
+
   # @tag :skip
   test "simplest" do
     source = ["A IDENT", " LDX 10", " ZRO", "B LDA 1", " LDB B", " ZRO", " ZRO B", " END"]
-    a_out = A940.Conductor.runner(source)
+    a_out = Conductor.runner(source)
     assert a_out.ident == "A"
     assert is_map(a_out.code)
     # a_out.code |> dbg
@@ -18,20 +20,20 @@ defmodule AssemblerTest do
   test "duplicate IDENTs cause error" do
     source = ["A IDENT", "B IDENT", " END"]
     err = "Multiple IDENT directives"
-    assert_raise RuntimeError, err, fn -> A940.Conductor.runner(source) end
+    assert_raise RuntimeError, err, fn -> Conductor.runner(source) end
   end
 
   # @tag :skip
   test "no IDENT directive" do
     source = [" END"]
     err = "No IDENT directive"
-    assert_raise RuntimeError, err, fn -> A940.Conductor.runner(source) end
+    assert_raise RuntimeError, err, fn -> Conductor.runner(source) end
   end
 
   # @tag :skip
   test "simple with instruction" do
     source = ["A IDENT", " LDA 5", " END"]
-    a_out = A940.Conductor.runner(source)
+    a_out = Conductor.runner(source)
     assert a_out.ident == "A"
     assert is_map(a_out.code)
     assert map_size(a_out.code) == 1
@@ -43,7 +45,7 @@ defmodule AssemblerTest do
   # @tag :skip
   test "simple with indexed instruction" do
     source = ["A IDENT", " LDA 6,2", " END"]
-    a_out = A940.Conductor.runner(source)
+    a_out = Conductor.runner(source)
     assert a_out.ident == "A"
     assert is_map(a_out.code)
     assert map_size(a_out.code) == 1
@@ -56,7 +58,7 @@ defmodule AssemblerTest do
 
   test "simple with indexed and indirect instruction" do
     source = ["A IDENT", " LDA* 6,2", " END"]
-    a_out = A940.Conductor.runner(source)
+    a_out = Conductor.runner(source)
     assert a_out.ident == "A"
     assert is_map(a_out.code)
     assert map_size(a_out.code) == 1
@@ -70,7 +72,7 @@ defmodule AssemblerTest do
   # @tag :skip
   test "simple with labels instruction" do
     source = ["A IDENT", "B LDA 6,2", "C STA* 7", " END"]
-    a_out = A940.Conductor.runner(source)
+    a_out = Conductor.runner(source)
     assert a_out.ident == "A"
     assert is_map(a_out.code)
     assert map_size(a_out.code) == 2
@@ -83,7 +85,7 @@ defmodule AssemblerTest do
   # @tag :skip
   test "comment lines" do
     source = ["A IDENT", "*****", "* EQUS", " END"]
-    a_out = A940.Conductor.runner(source)
+    a_out = Conductor.runner(source)
     a_out
     # |> dbg
   end
@@ -106,7 +108,7 @@ defmodule AssemblerTest do
       " END"
     ]
 
-    a_out = A940.Conductor.runner(source)
+    a_out = Conductor.runner(source)
     bru_instruction = Map.get(a_out.code, 2)
     assert bru_instruction.value == 0o0100007
     assert bru_instruction.relocation_value == 0
@@ -122,7 +124,7 @@ defmodule AssemblerTest do
       " END"
     ]
 
-    a_out = A940.Conductor.runner(source)
+    a_out = Conductor.runner(source)
     ghi = Map.get(a_out.code, 2)
     assert ghi.value == 0x272829
     assert ghi.relocation_value == 0
@@ -139,7 +141,7 @@ defmodule AssemblerTest do
       " END"
     ]
 
-    a_out = A940.Conductor.runner(source)
+    a_out = Conductor.runner(source)
     # check BB symbol
     symbol_value = Map.get(a_out.symbols, "BB")
     assert symbol_value.value == length
@@ -168,7 +170,7 @@ defmodule AssemblerTest do
       " END"
     ]
 
-    a_out = A940.Conductor.runner(source)
+    a_out = Conductor.runner(source)
     mem = Map.get(a_out.code, 0)
     assert mem.value == 0o04600114
   end
@@ -182,7 +184,7 @@ defmodule AssemblerTest do
 
     err = "DEC operative is not implemented"
 
-    assert_raise RuntimeError, err, fn -> A940.Conductor.runner(source) end
+    assert_raise RuntimeError, err, fn -> Conductor.runner(source) end
   end
 
   test "OCT test" do
@@ -194,7 +196,7 @@ defmodule AssemblerTest do
 
     err = "OCT operative is not implemented"
 
-    assert_raise RuntimeError, err, fn -> A940.Conductor.runner(source) end
+    assert_raise RuntimeError, err, fn -> Conductor.runner(source) end
   end
 
   test "EXT & FIILIB test" do
@@ -210,7 +212,7 @@ defmodule AssemblerTest do
       " END"
     ]
 
-    a_out = A940.Conductor.runner(source)
+    a_out = Conductor.runner(source)
     symbols = a_out.symbols
     [a_address, b_address, c_address] = Enum.map(["A", "B", "C"], &Map.get(symbols, &1))
     assert a_address.value == 0
@@ -238,7 +240,7 @@ defmodule AssemblerTest do
       " END"
     ]
 
-    _a_out = A940.Conductor.runner(source)
+    _a_out = Conductor.runner(source)
     [keys: symbol_keys] = :ets.lookup(:symbols, :keys)
     [keys: macro_keys] = :ets.lookup(:macros, :keys)
     assert is_list(symbol_keys)
@@ -265,28 +267,30 @@ defmodule AssemblerTest do
       " END"
     ]
 
-    a_out = A940.Conductor.runner(source)
+    a_out = Conductor.runner(source)
     b_address = Map.get(a_out.symbols, "B")
     assert b_address.forgotten?
     c_address = Map.get(a_out.symbols, "C")
     assert not c_address.forgotten?
   end
 
-  test "FRGTOP  test" do
-    _source = [
+  test "OPD + FRGTOP  test" do
+    source = [
       "Z IDENT",
-      " FIILIB",
-      "A EXT *",
-      " ZRO",
-      "B LDA 77",
-      "B EXT",
-      "C LDX 5",
-      "D EXT 7",
-      " FRGTOP ",
+      # "T:ADD OPD 1474560,2",
+      "T:ADD OPD 5500000B,2",
+      " ADD 7",
+      " T:ADD 7",
       " END"
     ]
 
-    assert 1
-    # a_out = A940.Conductor.runner(source)
+    a_out = Conductor.runner(source)
+    code = a_out.code
+    location_0 = Map.get(code, 0)
+    location_1 = Map.get(code, 1)
+    assert location_0.value == location_1.value
+    assert location_0.relocation_value == location_1.relocation_value
+
+    # a_out = Conductor.runner(source)
   end
 end

@@ -10,21 +10,24 @@ defmodule A940.Op do
             # 0, 9 or 14, but 14 if :yes_address with indirect bit
             address_length: 14,
             processing_function: nil,
-            define_location?: true
+            define_location?: true,
+            assembly_defined?: false
 
   def new(
         value,
         class \\ :yes_address,
         address_length \\ 14,
         processing_function \\ nil,
-        define_location \\ true
+        define_location \\ true,
+        assembly_defined \\ false
       ) do
     %__MODULE__{
       value: value,
       address_class: class,
       address_length: address_length,
       processing_function: processing_function,
-      define_location?: define_location
+      define_location?: define_location,
+      assembly_defined?: assembly_defined
     }
   end
 
@@ -45,7 +48,12 @@ defmodule A940.Op do
     |> Map.put("FREEZE", new(0, :no_address, 24, &A940.Directive.freeze/2, false))
     |> Map.put("FRGT", new(0, :special_address, 0, &A940.Directive.frgt/2, false))
     |> Map.put("FRGTOP", new(0, :special_address, 0, &A940.Directive.frgtop/2, false))
+    |> Map.put("GLOBAL", new(0, :special_address, 0, &A940.Directive.not_implemented/2, false))
+    |> Map.put("LIST", new(0, :special_address, 0, &A940.Directive.ignored/2, false))
+    |> Map.put("NOLIST", new(0, :special_address, 0, &A940.Directive.ignored/2, false))
+    |> Map.put("LOCAL", new(0, :special_address, 0, &A940.Directive.not_implemented/2, false))
     |> Map.put("OCT", new(0, :maybe_address, 14, &A940.Directive.oct/2, false))
+    |> Map.put("OPD", new(0, :yes_address, 0, &A940.Directive.opdef/2, false))
     |> Map.put("ZRO", new(0, :maybe_address, 14, &A940.Directive.zro/2))
     |> Map.put("HLT", new(0o0000000, :no_address))
     |> Map.put("BRU", new(0o0100000))
@@ -125,7 +133,7 @@ defmodule A940.Op do
     op_structure =
       cond do
         opcode_token_flag == :number -> new(opcode, :yes_address, 14)
-        opcode_token_flag == :symbol -> get_op(state, opcode)
+        opcode_token_flag == :symbol -> get_op(opcode)
         true -> raise "unknown opcode #{opcode} line #{state.line_number}"
       end
 
@@ -164,8 +172,6 @@ defmodule A940.Op do
   def handle_indirect_op(%State{} = state, opcode_token) do
     handle_direct_op(set_indirect_flag(state), opcode_token)
   end
-
-  defp get_op(%A940.State{} = _state, op_name), do: Map.get(opcode_table(), op_name)
 
   defp set_indirect_flag(%State{} = state) do
     new_flags = %{state.flags | indirect: true}
@@ -240,5 +246,23 @@ defmodule A940.Op do
         {:delimiter, "$"} = state.label_tokens |> Enum.at(0)
         State.update_symbol_table(state, label_name, true)
     end
+  end
+
+  def get_op(op_name), do: :ets.lookup(:opcodes, op_name) |> hd |> elem(1)
+
+  def new_opcode_table() do
+    :ets.new(:opcodes, [:set, :protected, :named_table])
+    opcode_tbl = opcode_table()
+    Enum.map(Map.to_list(opcode_tbl), &:ets.insert(:opcodes, &1))
+    :ets.insert(:opcodes, {:keys, Map.keys(opcode_tbl)})
+    :ets.insert(:opcodes, {:opdefs, []})
+  end
+
+  def update_opcode_table(opcode, %__MODULE__{} = op) when is_binary(opcode) do
+    :ets.insert(:opcodes, {opcode, op})
+    :ets.lookup(:opcodes, opcode)
+    [{:opdefs, defs}] = :ets.lookup(:opcodes, :opdefs)
+    :ets.insert(:opcodes, {:opdefs, [opcode | defs]})
+    :ok
   end
 end

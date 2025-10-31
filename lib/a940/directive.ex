@@ -9,7 +9,7 @@ defmodule A940.Directive do
     do: state
 
   def bes(%State{} = state, :second_call) do
-    {val, relocation} = A940.Address.eval(state)
+    {val, relocation} = A940.Expression.evaluate(state)
 
     cond do
       not (is_integer(val) and is_integer(relocation)) ->
@@ -34,15 +34,21 @@ defmodule A940.Directive do
     do: state
 
   def bss(%State{} = state, :second_call) do
-    {val, relocation} = A940.Address.eval(state)
+    if state.line_number == 84 do
+      {state.label_tokens, Map.keys(state.symbols) |> Enum.sort()} |> dbg
+    end
+
+    {val, relocation} = A940.Expression.evaluate(state)
 
     cond do
       not (is_integer(val) and is_integer(relocation)) ->
         raise "BSS on line #{state.line_number} - illegal operand"
 
-      # val < 1 or  ... BSS 0 is legal???
       val > 16383 ->
         raise("BSS on line #{state.line_number} of #{val} words is illegal")
+
+      val == 0 ->
+        state
 
       relocation != 0 ->
         raise("BSS on line #{state.line_number} has illegal relocation=#{relocation}")
@@ -68,7 +74,8 @@ defmodule A940.Directive do
     do: state
 
   def data(%State{} = state, :second_call) do
-    {val, relocation} = A940.Address.eval(state)
+    # TODO - make this handle " DATA 1,2,3"
+    {val, relocation} = A940.Expression.evaluate(state)
 
     cond do
       not (is_integer(val) and is_integer(relocation)) ->
@@ -90,7 +97,9 @@ defmodule A940.Directive do
     do: state
 
   def equ(%State{} = state, :second_call) do
-    {val, relocation} = A940.Address.eval(state)
+    {val, relocation} = A940.Expression.evaluate(state)
+
+    # {val, relocation} = A940.Address.eval(state)
 
     # okay to re-define a symbol
     # state, symbol_name, value, ?, relocation, exported)
@@ -210,7 +219,7 @@ defmodule A940.Directive do
         length(state.label_tokens) != 1 ->
           raise "IDENT directive must have simple lable line #{state.line_number}"
 
-        {:symbol, _} = hd(state.label_tokens) ->
+        :symbol == hd(state.label_tokens) |> elem(0) ->
           ident_name = elem(hd(state.label_tokens), 1)
           %{state | ident: ident_name, flags: %{state.flags | done: true}}
 
@@ -225,6 +234,50 @@ defmodule A940.Directive do
   def ident(%State{} = state, :second_call) do
     # nothing to do
     # IO.puts("ident 2nd-----------------------------------------------------------")
+    state
+  end
+
+  def opdef(%State{} = state, :first_call) do
+    state
+  end
+
+  def opdef(%State{} = state, :second_call) do
+    if length(state.address_tokens_list) != 2 do
+      raise("OPD directive must have 2 address fields (line #{state.line_number})")
+    end
+
+    [word_expression, type_expression] = state.address_tokens_list
+    [{:symbol, op_code}] = state.label_tokens
+    {op_word, 0} = A940.Address.eval(state, word_expression)
+    {address_type, 0} = A940.Address.eval(state, type_expression)
+
+    address_class =
+      case address_type do
+        0 -> :maybe_address
+        1 -> :no_address
+        2 -> :yes_address
+        _ -> raise("Illegal address type in OPDEF line #{state.line_number}")
+      end
+
+    op_value = A940.Op.new(op_word, address_class, 14, nil, true, true)
+    A940.Op.update_opcode_table(op_code, op_value)
+    # {"opdef", op_code, Integer.to_string(op_word, 8)} |> dbg()
+    # {"opdef1", op_value} |> dbg
+    state
+  end
+
+  def not_implemented(%State{} = state, _) do
+    {:symbol, directive} = hd(state.opcode_tokens)
+    raise "Illegal directive #{directive} on line #{state.line_number}"
+  end
+
+  def ignored(%State{} = state, phase) do
+    {:symbol, directive} = hd(state.opcode_tokens)
+
+    if phase == :first_call do
+      IO.puts("Ignoring directive #{directive} on line #{state.line_number}")
+    end
+
     state
   end
 
@@ -267,8 +320,17 @@ defmodule A940.Directive do
 
   def b(n) when is_integer(n) and n >= 0 and n <= 23, do: 0o40000000 >>> n
 
-  def copy_token([{:symbol, copy_mnemonic}], field) do
-    case copy_mnemonic do
+  def copy_token([{:symbol, copy_mnemonic}], field), do: copy_token(copy_mnemonic, field)
+
+  def copy_token(copy_mnemonic, field) do
+    mnemonic =
+      cond do
+        is_tuple(copy_mnemonic) -> elem(copy_mnemonic, 1)
+        is_binary(copy_mnemonic) -> copy_mnemonic
+        true -> raise "Illegal register change mnemonic #{inspect(copy_mnemonic)}"
+      end
+
+    case mnemonic do
       "A" -> b(23)
       "B" -> b(22)
       "AB" -> b(21)

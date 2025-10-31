@@ -1,6 +1,8 @@
 defmodule OpTest do
   use ExUnit.Case
 
+  alias A940.Op
+
   test "Directive b()" do
     assert A940.Directive.b(0) == 0o40000000
     assert A940.Directive.b(23) == 1
@@ -17,7 +19,7 @@ defmodule OpTest do
   end
 
   test "Directive.copy_token" do
-    assert 1 == A940.Directive.copy_token({:symbol, "A"}, 0)
+    assert 1 == A940.Directive.copy_token([{:symbol, "A"}], 0)
     assert 3 == A940.Directive.copy_token({:symbol, "B"}, 1)
     assert 2 ** 22 + 3 == A940.Directive.copy_token({:symbol, "X"}, 3)
     assert 4 == A940.Directive.copy_token({:symbol, "AB"}, 0)
@@ -28,5 +30,22 @@ defmodule OpTest do
     assert 128 == A940.Directive.copy_token({:symbol, "XA"}, 0)
     assert 256 == A940.Directive.copy_token({:symbol, "AX"}, 0)
     assert 512 == A940.Directive.copy_token({:symbol, "N"}, 0)
+  end
+
+  @weird_instruction "A:1"
+  @weird_instruction_value 0o12345670
+  test "opcode table" do
+    Op.new_opcode_table()
+    [opdefs: opdefs_list] = :ets.lookup(:opcodes, :opdefs)
+    assert length(opdefs_list) == 0
+    add = Op.get_op("ADD")
+    assert add.value == 0o5500000
+    test_op = Op.new(@weird_instruction_value)
+    Op.update_opcode_table(@weird_instruction, test_op)
+    [{:opdefs, opdefs_list}] = :ets.lookup(:opcodes, :opdefs)
+    assert length(opdefs_list) == 1
+    assert opdefs_list |> hd() == @weird_instruction
+    weird = Op.get_op(@weird_instruction)
+    assert weird.value == @weird_instruction_value
   end
 end

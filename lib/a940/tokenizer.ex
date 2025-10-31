@@ -56,7 +56,20 @@ defmodule A940.Tokenizer do
           {:spaces, " ", hd(white_space)}
 
         octal_number != nil ->
-          {:number, decode_octal(octal_number), hd(octal_number)}
+          number_text = hd(octal_number)
+
+          number_text =
+            cond do
+              # number_text is all a number
+              String.ends_with?(number_text, ["B", "0", "1", "2", "3", "4", "5", "6", "7"]) ->
+                number_text
+
+              # number_text has punctuation after it; take it away from the matching string
+              true ->
+                String.slice(number_text, 0..-2//1)
+            end
+
+          {:number, decode_octal(octal_number), number_text}
 
         decimal_number != nil ->
           {:number, decode_decimal(decimal_number), hd(decimal_number)}

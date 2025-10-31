@@ -52,6 +52,21 @@ defmodule A940.Expression do
     evaluate(evstate)
   end
 
+  def evaluate(%A940.State{} = state) do
+    if state.line_number == 265 do
+      state.address_tokens_list |> dbg
+    end
+
+    {current_location, current_relocation} = A940.State.current_location(state)
+
+    evaluate(
+      hd(state.address_tokens_list),
+      state.symbols,
+      current_location,
+      current_relocation
+    )
+  end
+
   def evaluate(%__MODULE__{} = evstate) do
     {evstate.tokens, evstate.operator_stack, evstate.value_stack, evstate.symbols}
     # |> dbg
@@ -204,6 +219,10 @@ defmodule A940.Expression do
           hd(evstate.tokens) == {:delimiter, "]"} -> push_or_evaluate(rest(evstate), "]")
           true -> throw({:error})
         end
+
+      tag == :string_6 ->
+        {value_1, _} = value
+        push_number(rest(evstate), value_1)
 
       true ->
         raise "error in ev_primary"
