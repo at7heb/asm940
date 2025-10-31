@@ -19,5 +19,6 @@ erl_crash.dump
 # Ignore package tarball (built via "mix hex.build").
 asm940-*.tar
 
-# Temporary files, for example, from tests.
+# Temporary files, for example, from tests. Or from vi
 /tmp/
+*.swp
