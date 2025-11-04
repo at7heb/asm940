@@ -34,9 +34,9 @@ defmodule A940.Directive do
     do: state
 
   def bss(%State{} = state, :second_call) do
-    if state.line_number == 84 do
-      {state.label_tokens, Map.keys(state.symbols) |> Enum.sort()} |> dbg
-    end
+    # if state.line_number == 84 do
+    #   {state.label_tokens, Map.keys(state.symbols) |> Enum.sort()} |> dbg
+    # end
 
     {val, relocation} = A940.Expression.evaluate(state)
 
@@ -75,9 +75,15 @@ defmodule A940.Directive do
 
   def data(%State{} = state, :second_call) do
     # TODO - make this handle " DATA 1,2,3"
-    {val, relocation} = A940.Expression.evaluate(state)
+    # {val, relocation} = A940.Expression.evaluate(state)
+    address = A940.Expression.evaluate(state)
+    {val, relocation} = address
+    {qualifier, tokens_list} = address
 
     cond do
+      qualifier == :external_expression or qualifier == :literal_expression ->
+        State.add_memory(state, 0, tokens_list)
+
       not (is_integer(val) and is_integer(relocation)) ->
         raise "DATA on line #{state.line_number} - illegal operand"
 
@@ -266,6 +272,42 @@ defmodule A940.Directive do
     state
   end
 
+  def popdef(%State{} = state, :first_call) do
+    state
+  end
+
+  def popdef(%State{} = state, :second_call) do
+    if length(state.address_tokens_list) != 2 do
+      raise("POPD directive must have 2 address fields (line #{state.line_number})")
+    end
+
+    [word_expression, type_expression] = state.address_tokens_list
+    [{:symbol, op_code}] = state.label_tokens
+    {op_word, 0} = A940.Address.eval(state, word_expression)
+
+    if op_word < 0o10000000 or op_word > 0o17700000 do
+      raise(
+        "POPD must define a POP code 10000000B <= POP <= 17700000B (line #{state.line_number})"
+      )
+    end
+
+    {address_type, 0} = A940.Address.eval(state, type_expression)
+
+    address_class =
+      case address_type do
+        0 -> :maybe_address
+        1 -> :no_address
+        2 -> :yes_address
+        _ -> raise("Illegal address type in OPDEF line #{state.line_number}")
+      end
+
+    op_value = A940.Op.new(op_word, address_class, 14, nil, true, true)
+    A940.Op.update_opcode_table(op_code, op_value)
+    # {"popdef", op_code, Integer.to_string(op_word, 8)} |> dbg()
+    # {"popdef1", op_value} |> dbg
+    state
+  end
+
   def not_implemented(%State{} = state, _) do
     {:symbol, directive} = hd(state.opcode_tokens)
     raise "Illegal directive #{directive} on line #{state.line_number}"
@@ -286,10 +328,10 @@ defmodule A940.Directive do
   end
 
   def asc(%State{} = state, :second_call) do
-    f = ~r/^(\$?[A-Z0-9:]+){0,1} +ASC +(\'(.+)\')|(\"(.+)\")$/
+    f = ~r/^(\$?[A-Z0-9:]+){0,1} +ASC +(\'(.+)\')|(\"(.+)\")/
     asc_string = Regex.run(f, Map.get(state.lines, state.line_number)) |> List.last()
     line_data = A940.Tokenizer.decode_string_8(asc_string)
-    Enum.reduce(line_data, state, fn word, stt -> State.add_memory(stt, word) end)
+    Enum.reduce(line_data, state, fn word, stt -> State.add_memory(stt, word, 0) end)
   end
 
   def oct(%State{} = _state, _),

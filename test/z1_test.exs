@@ -1,4 +1,4 @@
-defmodule ZTest do
+defmodule Z1Test do
   use ExUnit.Case
 
   test "Basic part 1" do

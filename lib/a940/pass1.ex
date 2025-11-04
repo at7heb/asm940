@@ -7,38 +7,52 @@ defmodule A940.Pass1 do
   def run(%A940.State{} = state) do
     Enum.reduce(state.tokens_list, state, fn %A940.Tokenizer{line_number: linenum, tokens: tokens},
                                              state ->
-      handle_statement(tokens, update_state_for_next_statement(state, linenum))
+      assemble_statement(tokens, update_state_for_next_statement(state, linenum))
     end)
   end
 
-  def handle_statement([eol: ""], %A940.State{} = state),
+  def assemble_statement([eol: ""], %A940.State{} = state),
     do: state
 
-  def handle_statement(tokens, %A940.State{} = state) do
-    IO.puts("Line #{state.line_number} -------------------------------")
+  # def handle_statement(tokens, %A940.State{} = state) do
+  #   if not state.assembling and not is_actionable_conditional(state.opcode_tokens) do
+  #     IO.puts("Not assembling line #{state.line_number} -------------------------------")
+  #     state
+  #   else
+  #     assemble_statement(tokens, state)
+  #   end
+  # end
+
+  def assemble_statement(tokens, %A940.State{} = state) do
     # state = %{state | operation: nil}
     {tokens, state} = get_label_tokens(tokens, state)
 
     if not state.flags.done do
       {tokens, state} = get_opcode_tokens(tokens, state)
       # {"processing opcode", state.line_number} |> dbg
-      state = Op.process_opcode(state)
-      # state.operation |> dbg
+      if not state.assembling and not is_actionable_conditional(state.opcode_tokens) do
+        IO.puts("Not assembling line #{state.line_number} -------------------------------")
+        state
+      else
+        IO.puts("    Assembling line #{state.line_number} -------------------------------")
+        state = Op.process_opcode(state)
+        # state.operation |> dbg
 
-      {_, state} =
-        if state.operation.address_class == :no_address,
-          do: {[], state},
-          # tokens |> dbg
-          else: get_address_tokens(tokens, state)
+        {_, state} =
+          if state.operation.address_class == :no_address,
+            do: {[], state},
+            # tokens |> dbg
+            else: get_address_tokens(tokens, state)
 
-      # |> dbg
-      if state.line_number == 61 do
-        {state.line_number, state.ident, state.label_tokens, state.opcode_tokens,
-         state.address_tokens_list, Enum.at(state.tokens_list, 60)}
-        |> dbg
+        # |> dbg
+        if state.line_number == 61 do
+          {state.line_number, state.ident, state.label_tokens, state.opcode_tokens,
+           state.address_tokens_list, Enum.at(state.tokens_list, 60)}
+          |> dbg
+        end
+
+        Op.process_opcode_again(state)
       end
-
-      Op.process_opcode_again(state)
     else
       state
     end
@@ -314,6 +328,22 @@ defmodule A940.Pass1 do
       length(label_tokens) == 1 -> false
       length(label_tokens) == 2 -> true
       true -> false
+    end
+  end
+
+  # def is_actionable_conditional(opcode_tokens) when is_list(opcode_tokens) do
+  def is_actionable_conditional(opcode_tokens) do
+    # opcode_tokens |> dbg
+
+    cond do
+      length(opcode_tokens) != 1 ->
+        false
+
+      :symbol == hd(opcode_tokens) |> elem(0) ->
+        (hd(opcode_tokens) |> elem(1)) in ["IF", "ELSE", "ELSF", "ENDF"]
+
+      true ->
+        false
     end
   end
 

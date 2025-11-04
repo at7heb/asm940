@@ -9,6 +9,8 @@ defmodule TokenizerTest do
   @flagsB %{default_base: 8}
   @flagsD %{default_base: 10}
 
+  # TODO - add test to ignore delimiter after e.g. 1000B or 1B3
+
   # @tag :skip
   test "create tokens" do
     t = Tokenizer.tokens(1, "A", @flagsD)

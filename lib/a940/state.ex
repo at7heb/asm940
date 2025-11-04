@@ -25,7 +25,9 @@ defmodule A940.State do
             ident: "",
             line_number: 0,
             output_symbols: true,
-            f2lib?: false
+            f2lib?: false,
+            assembling: true,
+            if_stack: []
 
   def new(lines) do
     {_count, line_map} =
@@ -122,8 +124,19 @@ defmodule A940.State do
     %{state | symbols: new_symbols}
   end
 
-  def add_memory(%__MODULE__{} = state, value, relocation \\ 0) do
+  def add_memory(%__MODULE__{} = state, value, relocation)
+      when is_integer(value) and is_integer(relocation) do
     memory_value = A940.MemoryValue.new(value, relocation)
+    save_memory(state, memory_value)
+  end
+
+  def add_memory(%__MODULE__{} = state, value, address_expression_tokens)
+      when is_integer(value) and is_list(address_expression_tokens) do
+    memory_value = A940.MemoryValue.new(value, address_expression_tokens)
+    save_memory(state, memory_value)
+  end
+
+  def save_memory(%__MODULE__{} = state, %A940.MemoryValue{} = memory_value) do
     new_code = Map.put(state.code, state.location_relative, memory_value)
     new_location = state.location_relative + 1
 

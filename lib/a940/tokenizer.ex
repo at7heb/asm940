@@ -12,7 +12,7 @@ defmodule A940.Tokenizer do
   @string_6 ~r/^'([^']{0,4})'/
   @string_long ~r/^'([^']{5,})'/
   @delimiter_diagraphs ~r/^(>=)|(<=)/
-  @delimiter ~r/^[-+*\/,()=.$_"]/
+  @delimiter ~r/^[-+*\/,()=.$_"'←\\]/
   @special ~r/^[;<>?[\]!%&@]/
   @illegal ~r/^[#^]+/
 
@@ -90,6 +90,9 @@ defmodule A940.Tokenizer do
         # symbol != nil ->
         #   {:symbol, hd(symbol), hd(symbol)}
 
+        # be sure string_6 check is before delimiter because
+        # ' is both string_6 delimiter and a delimiter
+        # unmatched ' in a comment will match the delimiter
         string_6 != nil ->
           {:string_6, decode_string_6(hd(tl(string_6))), hd(string_6)}
 

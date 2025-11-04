@@ -296,7 +296,7 @@ AHEAD0   SKG     =90       HB 72-02-24
        BRS     14
        BRS     11
        BRU     PP1
-BACKAR   LDA     =77B      TYPE OUT AN ←.  4.02
+BACKAR   LDA     =77B      TYPE OUT AN ←.  4.02 
          CIO     ONE
 BACKCR   LDA     CRCH      AT BEGINNING OF LINE.             HB 72/02/03
          CIO     ONE

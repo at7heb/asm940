@@ -61,9 +61,15 @@ defmodule A940.Address do
       when is_binary(representation),
       do: {String.to_integer(representation, state.flags.default_base) &&& 0o7777777, 0}
 
-  def eval(%State{} = state, [{:symbol, address_part_symbol}] = _address_token) do
+  def eval(%State{} = state, [{:symbol, address_part_symbol}] = address_token) do
     address_part_address = Map.get(state.symbols, address_part_symbol, nil)
     # |> dbg()
+    if address_part_address == nil do
+      {address_part_symbol, map_size(state.symbols), state.line_number,
+       A940.Expression.evaluate(address_token, state.symbols, state.location_relative, 1)}
+      |> dbg
+    end
+
     {address_part_address.value, address_part_address.relocation}
   end
 

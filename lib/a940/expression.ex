@@ -49,13 +49,20 @@ defmodule A940.Expression do
 
   def evaluate(tokens, symbols, current_location, current_relocation) do
     evstate = new(tokens, symbols, current_location, current_relocation)
-    evaluate(evstate)
+
+    try do
+      evaluate(evstate)
+    catch
+      :external_symbol -> {:external_expression, tokens}
+      :literal_expression -> {:literal_expression, tokens}
+      x -> {:unk, x, tokens} |> dbg
+    end
   end
 
   def evaluate(%A940.State{} = state) do
-    if state.line_number == 265 do
-      state.address_tokens_list |> dbg
-    end
+    # if state.line_number == 265 do
+    #   state.address_tokens_list |> dbg
+    # end
 
     {current_location, current_relocation} = A940.State.current_location(state)
 
@@ -68,17 +75,11 @@ defmodule A940.Expression do
   end
 
   def evaluate(%__MODULE__{} = evstate) do
-    {evstate.tokens, evstate.operator_stack, evstate.value_stack, evstate.symbols}
+    # {evstate.tokens, evstate.operator_stack, evstate.value_stack, evstate.symbols}
     # |> dbg
 
-    save_tokens = evstate.tokens
-
-    try do
-      new_state = ev_expression(evstate)
-      {hd(new_state.value_stack), hd(new_state.relocation_stack)}
-    catch
-      x -> {x, save_tokens}
-    end
+    new_state = ev_expression(evstate)
+    {hd(new_state.value_stack) &&& 0o77777777, hd(new_state.relocation_stack)}
   end
 
   def ev_expression(%__MODULE__{tokens: []} = evstate) do
@@ -97,6 +98,7 @@ defmodule A940.Expression do
     # |> dbg
 
     cond do
+      first == {:delimiter, "="} -> throw(:literal_expression)
       first == {:delimiter, "+"} -> push_or_evaluate(rest(evstate), "U+") |> ev_basic_expression()
       first == {:delimiter, "-"} -> push_or_evaluate(rest(evstate), "U-") |> ev_basic_expression()
       first == {:delimiter, "@"} -> push_or_evaluate(rest(evstate), "U@") |> ev_basic_expression()
@@ -167,13 +169,15 @@ defmodule A940.Expression do
       hd(evstate.tokens) == {:delimiter, ">"} ->
         push_or_evaluate(rest(evstate), ">") |> ev_basic_expression()
 
-      hd(evstate.tokens) == {:delimiter, "&"} ->
+      # ond of the mysteries of life - why is & special?
+      #   @special ~r/^[;<>?[\]!%&@]/
+      hd(evstate.tokens) == {:special, "&"} ->
         push_or_evaluate(rest(evstate), "&") |> ev_basic_expression()
 
-      hd(evstate.tokens) == {:delimiter, "!"} ->
+      hd(evstate.tokens) == {:special, "!"} ->
         push_or_evaluate(rest(evstate), "!") |> ev_basic_expression()
 
-      hd(evstate.tokens) == {:delimiter, "%"} ->
+      hd(evstate.tokens) == {:special, "%"} ->
         push_or_evaluate(rest(evstate), "%") |> ev_basic_expression()
 
       hd(evstate.tokens) == {:delimiter, "]"} ->
@@ -248,11 +252,14 @@ defmodule A940.Expression do
     # relocation: 0,
     # expression_tokens: expression,
     cond do
+      symbol == nil ->
+        throw(:external_symbol)
+
       symbol.expression_tokens == nil or symbol.expression_tokens == [] ->
         push(evstate, symbol.value, symbol.relocation)
 
       length(symbol.expression_tokens) > 0 ->
-        throw(:undefined_symbol)
+        throw(:external_symbol)
     end
   end
 
