@@ -19,6 +19,14 @@ defmodule A940.MemoryValue do
         address_expression: address_expression_tokens
       }
 
+  def new(address_expression_tokens)
+      when is_list(address_expression_tokens),
+      do: %__MODULE__{
+        value: 0,
+        relocation_value: 0,
+        address_expression: address_expression_tokens
+      }
+
   def merge_value(%__MODULE__{value: content} = memory_value, merge_value),
     do: %{memory_value | value: content ||| merge_value}
 end

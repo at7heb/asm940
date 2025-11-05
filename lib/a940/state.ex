@@ -1,7 +1,5 @@
 defmodule A940.State do
-  import Bitwise
-
-  alias A940.Address
+  alias A940.{Address, MemoryAddress}
 
   defstruct lines: %{},
             tokens_list: [],
@@ -12,10 +10,6 @@ defmodule A940.State do
             operation: %A940.Op{},
             symbols: %{},
             macros: %{},
-            # ops: %{},
-            # keys are the relocatable location, value is a MemoryValue
-            # should this be a genserver??
-            code: %{},
             flags: %A940.Flags{},
             # this keeps counting up with each instruction or data word(s)
             # default relocation value of 1 (implicit, not stored)
@@ -124,58 +118,58 @@ defmodule A940.State do
     %{state | symbols: new_symbols}
   end
 
-  def add_memory(%__MODULE__{} = state, value, relocation)
-      when is_integer(value) and is_integer(relocation) do
-    memory_value = A940.MemoryValue.new(value, relocation)
-    save_memory(state, memory_value)
-  end
+  # def addzz_memory(%__MODULE__{} = state, value, relocation)
+  #     when is_integer(value) and is_integer(relocation) do
+  #   memory_value = A940.MemoryValue.new(value, relocation)
+  #   save_memory(state, memory_value)
+  # end
 
-  def add_memory(%__MODULE__{} = state, value, address_expression_tokens)
-      when is_integer(value) and is_list(address_expression_tokens) do
-    memory_value = A940.MemoryValue.new(value, address_expression_tokens)
-    save_memory(state, memory_value)
-  end
+  # def addzz_memory(%__MODULE__{} = state, value, address_expression_tokens)
+  #     when is_integer(value) and is_list(address_expression_tokens) do
+  #   memory_value = A940.MemoryValue.new(value, address_expression_tokens)
+  #   save_memory(state, memory_value)
+  # end
 
-  def save_memory(%__MODULE__{} = state, %A940.MemoryValue{} = memory_value) do
-    new_code = Map.put(state.code, state.location_relative, memory_value)
-    new_location = state.location_relative + 1
+  # def save_memory(%__MODULE__{} = state, %A940.MemoryValue{} = memory_value) do
+  #   new_code = Map.put(state.code, state.location_relative, memory_value)
+  #   new_location = state.location_relative + 1
 
-    new_abs_location =
-      if state.flags.relocating, do: state.location_absolute, else: state.location_absolute + 1
+  #   new_abs_location =
+  #     if state.flags.relocating, do: state.location_absolute, else: state.location_absolute + 1
 
-    %{
-      state
-      | code: new_code,
-        location_relative: new_location,
-        location_absolute: new_abs_location
-    }
-  end
+  #   %{
+  #     state
+  #     | code: new_code,
+  #       location_relative: new_location,
+  #       location_absolute: new_abs_location
+  #   }
+  # end
 
-  def merge_address(%__MODULE__{} = state, address_value, location)
-      when address_value >= 0 and address_value <= 16383 and location >= 0 and location <= 16383 do
-    current_word = Map.get(state.code, location, :illegal)
-    # don't change the relocation
-    %{
-      state
-      | code:
-          Map.put(state.code, location, A940.MemoryValue.merge_value(current_word, address_value))
-    }
-  end
+  # def merge_address(%__MODULE__{} = state, address_value, location)
+  #     when address_value >= 0 and address_value <= 16383 and location >= 0 and location <= 16383 do
+  #   current_word = Map.get(state.code, location, :illegal)
+  #   # don't change the relocation
+  #   %{
+  #     state
+  #     | code:
+  #         Map.put(state.code, location, A940.MemoryValue.merge_value(current_word, address_value))
+  #   }
+  # end
 
-  def merge_tag(%__MODULE__{} = state, tag_value, location)
-      when tag_value >= 0 and tag_value <= 7 and location >= 0 and location <= 16383 do
-    current_word = Map.get(state.code, location, :illegal)
+  # def merge_tag(%__MODULE__{} = state, tag_value, location)
+  #     when tag_value >= 0 and tag_value <= 7 and location >= 0 and location <= 16383 do
+  #   current_word = Map.get(state.code, location, :illegal)
 
-    %{
-      state
-      | code:
-          Map.put(
-            state.code,
-            location,
-            A940.MemoryValue.merge_value(current_word, tag_value <<< 21)
-          )
-    }
-  end
+  #   %{
+  #     state
+  #     | code:
+  #         Map.put(
+  #           state.code,
+  #           location,
+  #           A940.MemoryValue.merge_value(current_word, tag_value <<< 21)
+  #         )
+  #   }
+  # end
 
   def current_location(%__MODULE__{} = state) do
     address_value =
@@ -183,5 +177,32 @@ defmodule A940.State do
 
     address_relocation = if state.flags.relocating, do: 1, else: 0
     {address_value, address_relocation}
+  end
+
+  def get_current_location(%__MODULE__{} = state, offset \\ 0) do
+    cond do
+      state.flags.relocating -> MemoryAddress.new_relocatable(state.location_relative + offset)
+      true -> MemoryAddress.new_absolute(state.location_absolute + offset)
+    end
+  end
+
+  def increment_current_location(%__MODULE__{} = state, increment \\ 1) do
+    {new_location_relative, new_location_absolute} =
+      cond do
+        state.flags.relocating ->
+          {state.location_relative + increment, state.location_absolute}
+
+        not state.flags.relocating ->
+          {state.location_relative, state.location_absolute + increment}
+      end
+
+    if new_location_relative > 16383 or new_location_absolute > 16383 do
+      raise(
+        "illegal increment_current_location {r,a,i} = " <>
+          "#{new_location_relative}, #{new_location_absolute}, #{increment}"
+      )
+    end
+
+    %{state | location_absolute: new_location_absolute, location_relative: new_location_relative}
   end
 end

@@ -1,6 +1,5 @@
 defmodule A940.Pass1 do
-  alias A940.State
-  alias A940.Op
+  alias A940.{State, Op, Memory}
 
   import Bitwise
 
@@ -252,8 +251,13 @@ defmodule A940.Pass1 do
         true ->
           address_field = address &&& 2 ** state.flags.address_length - 1
 
-          State.merge_address(state, address_field, state.location_relative - 1)
-          |> State.merge_tag(tag &&& 7, state.location_relative - 1)
+          # State.mergezz_address(state, address_field, state.location_relative - 1)
+          # |> State.mergezz_tag(tag &&& 7, state.location_relative - 1)
+
+          location = State.get_current_location(state, -1)
+
+          Memory.merge_address(location, address_field, state.flags.address_length)
+          Memory.merge_tag(location, tag)
       end
 
     {[], new_state}
@@ -283,9 +287,13 @@ defmodule A940.Pass1 do
           state
 
         true ->
-          address_field = address &&& 2 ** state.flags.address_length - 1
-
-          State.merge_address(state, address_field, state.location_relative - 1)
+          # address_field = address &&& 2 ** state.flags.address_length - 1
+          # State.mergezz_address(state, address_field, state.location_relative - 1)
+          Memory.merge_address(
+            State.get_current_location(state, -1),
+            address,
+            state.flags.address_length
+          )
       end
 
     {[], new_state}

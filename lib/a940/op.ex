@@ -1,6 +1,5 @@
 defmodule A940.Op do
-  alias A940.State
-  alias A940.Address
+  alias A940.{State, Address, Memory, MemoryValue}
 
   import Bitwise
 
@@ -237,7 +236,13 @@ defmodule A940.Op do
       state.operation.value ||| (tag &&& 7) <<< 21 ||| (address_value &&& mask) |||
         indirect <<< 14
 
-    State.add_memory(state, word, relocation)
+    # State.addzz_memory(state, word, relocation)
+    Memory.set_memory(
+      State.get_current_location(state),
+      MemoryValue.new(word, relocation)
+    )
+
+    State.increment_current_location(state)
   end
 
   def update_opcode_memory(%State{} = state, address_expression_tokens, tag, indirect)
@@ -245,7 +250,13 @@ defmodule A940.Op do
     word =
       state.operation.value ||| (tag &&& 7) <<< 21 ||| indirect <<< 14
 
-    State.add_memory(state, word, address_expression_tokens)
+    # State.addzz_memory(state, word, address_expression_tokens)
+    Memory.set_memory(
+      State.get_current_location(state),
+      MemoryValue.new(word, address_expression_tokens)
+    )
+
+    State.increment_current_location(state)
   end
 
   def handle_indirect_op(%State{} = state, opcode_token) do

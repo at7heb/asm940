@@ -1,7 +1,7 @@
 defmodule A940.Directive do
   import Bitwise
 
-  alias A940.State
+  alias A940.{State, Memory, MemoryValue}
 
   @magic_end_of_program 0o31_062_144
 
@@ -67,7 +67,10 @@ defmodule A940.Directive do
       Enum.reduce(state.address_tokens_list, 0, fn token, field -> copy_token(token, field) end)
 
     word = @rch_instruction ||| address_field
-    State.add_memory(state, word, 0)
+
+    # State.addzz_memory(state, word, 0)
+    Memory.set_memory(State.get_current_location(state), MemoryValue.new(word, 0))
+    State.increment_current_location(state)
   end
 
   def data(%State{} = state, :first_call),
@@ -82,13 +85,17 @@ defmodule A940.Directive do
 
     cond do
       qualifier == :external_expression or qualifier == :literal_expression ->
-        State.add_memory(state, 0, tokens_list)
+        Memory.set_memory(State.get_current_location(state), MemoryValue.new(tokens_list))
 
-      not (is_integer(val) and is_integer(relocation)) ->
-        raise "DATA on line #{state.line_number} - illegal operand"
+      # State.addzz_memory(state, 0, tokens_list)
+
+      is_integer(val) and is_integer(relocation) ->
+        Memory.set_memory(State.get_current_location(state), MemoryValue.new(val, relocation))
+
+      # State.addzz_memory(state, val, relocation)
 
       true ->
-        State.add_memory(state, val, relocation)
+        raise "DATA on line #{state.line_number} - illegal operand"
     end
   end
 
@@ -209,8 +216,18 @@ defmodule A940.Directive do
 
   def f_end(%State{} = state, :second_call) do
     cond do
-      state.f2lib? -> State.add_memory(state, @magic_end_of_program, 0)
-      true -> state
+      state.f2lib? ->
+        # State.addzz_memory(state, @magic_end_of_program, 0)
+
+        Memory.set_memory(
+          State.get_current_location(state),
+          MemoryValue.new(@magic_end_of_program, 0)
+        )
+
+        State.increment_current_location(state)
+
+      true ->
+        state
     end
   end
 
@@ -331,7 +348,16 @@ defmodule A940.Directive do
     f = ~r/^(\$?[A-Z0-9:]+){0,1} +ASC +(\'(.+)\')|(\"(.+)\")/
     asc_string = Regex.run(f, Map.get(state.lines, state.line_number)) |> List.last()
     line_data = A940.Tokenizer.decode_string_8(asc_string)
-    Enum.reduce(line_data, state, fn word, stt -> State.add_memory(stt, word, 0) end)
+
+    Enum.reduce(line_data, state, fn word, stt ->
+      Memory.set_memory(
+        State.get_current_location(stt),
+        MemoryValue.new(word, 0)
+      )
+
+      State.increment_current_location(stt)
+      # State.addzz_memory(stt, word, 0)
+    end)
   end
 
   def oct(%State{} = _state, _),
@@ -355,7 +381,13 @@ defmodule A940.Directive do
     #     IO.puts("Symbol value: #{Map.get(state.symbols, label_name) |> inspect}")
     # end
 
-    State.add_memory(state, 0, 0)
+    # State.addzz_memory(state, 0, 0)
+    Memory.set_memory(
+      State.get_current_location(state),
+      MemoryValue.new(0, 0)
+    )
+
+    State.increment_current_location(state)
   end
 
   # helpers
