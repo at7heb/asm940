@@ -86,6 +86,7 @@ defmodule A940.Directive do
     cond do
       qualifier == :external_expression or qualifier == :literal_expression ->
         Memory.set_memory(State.get_current_location(state), MemoryValue.new(tokens_list))
+        State.increment_current_location(state)
 
       # State.addzz_memory(state, 0, tokens_list)
 
