@@ -92,7 +92,7 @@ defmodule A940.Directive do
       is_integer(val) and is_integer(relocation) ->
         Memory.set_memory(State.get_current_location(state), MemoryValue.new(val, relocation))
 
-      # State.addzz_memory(state, val, relocation)
+        State.increment_current_location(state)
 
       true ->
         raise "DATA on line #{state.line_number} - illegal operand"

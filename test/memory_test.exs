@@ -8,9 +8,9 @@ defmodule MemoryTest do
     addr_a = MemoryAddress.new_absolute(loc_a)
     loc_r = Enum.random(8001..16000)
     addr_r = MemoryAddress.new_relocatable(loc_r)
-    loc_z = Enum.random(16001..16200)
-    addr_z_a = MemoryAddress.new_absolute(loc_z)
-    addr_z_r = MemoryAddress.new_relocatable(loc_z)
+    # loc_z = Enum.random(16001..16200)
+    # addr_z_a = MemoryAddress.new_absolute(loc_z)
+    # addr_z_r = MemoryAddress.new_relocatable(loc_z)
 
     num_a = Enum.random(0..(2 ** 22 - 1))
     val_a = MemoryValue.new(num_a, 0)
@@ -55,7 +55,7 @@ defmodule MemoryTest do
 
     microseconds_0 = System.monotonic_time(:microsecond)
 
-    Enum.each(0..1_000_000, fn a ->
+    Enum.each(0..1_000_000, fn _a ->
       addr = MemoryAddress.new_relocatable(Enum.random(0..16383))
       _v = Memory.get_memory(addr)
     end)
