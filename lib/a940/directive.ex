@@ -1,7 +1,8 @@
 defmodule A940.Directive do
   import Bitwise
 
-  alias A940.{State, Memory, MemoryValue}
+  alias A940.MemoryAddress
+  alias A940.{State, Memory, MemoryValue, Expression}
 
   @magic_end_of_program 0o31_062_144
 
@@ -9,7 +10,7 @@ defmodule A940.Directive do
     do: state
 
   def bes(%State{} = state, :second_call) do
-    {val, relocation} = A940.Expression.evaluate(state)
+    {val, relocation} = Expression.evaluate(state)
 
     cond do
       not (is_integer(val) and is_integer(relocation)) ->
@@ -38,7 +39,7 @@ defmodule A940.Directive do
     #   {state.label_tokens, Map.keys(state.symbols) |> Enum.sort()} |> dbg
     # end
 
-    {val, relocation} = A940.Expression.evaluate(state)
+    {val, relocation} = Expression.evaluate(state)
 
     cond do
       not (is_integer(val) and is_integer(relocation)) ->
@@ -78,8 +79,8 @@ defmodule A940.Directive do
 
   def data(%State{} = state, :second_call) do
     # TODO - make this handle " DATA 1,2,3"
-    # {val, relocation} = A940.Expression.evaluate(state)
-    address = A940.Expression.evaluate(state)
+    # {val, relocation} = Expression.evaluate(state)
+    address = Expression.evaluate(state)
     {val, relocation} = address
     {qualifier, tokens_list} = address
 
@@ -111,7 +112,7 @@ defmodule A940.Directive do
     do: state
 
   def equ(%State{} = state, :second_call) do
-    {val, relocation} = A940.Expression.evaluate(state)
+    {val, relocation} = Expression.evaluate(state)
 
     # {val, relocation} = A940.Address.eval(state)
 
@@ -299,17 +300,20 @@ defmodule A940.Directive do
       raise("POPD directive must have 2 address fields (line #{state.line_number})")
     end
 
-    [word_expression, type_expression] = state.address_tokens_list
+    [_word_expression, type_expression] = state.address_tokens_list
     [{:symbol, op_code}] = state.label_tokens
-    {op_word, 0} = A940.Address.eval(state, word_expression)
+    # {op_word, 0} = A940.Address.eval(state, word_expression)
+    {op_word, 0} = Expression.evaluate(state)
+    next_state = %{state | address_tokens_list: [type_expression]}
 
     if op_word < 0o10000000 or op_word > 0o17700000 do
       raise(
-        "POPD must define a POP code 10000000B <= POP <= 17700000B (line #{state.line_number})"
+        "POPD must define a POP code 10000000B <= POP <= 17700000B " <>
+          "(line #{state.line_number}) code = #{Integer.to_string(op_word, 8)}"
       )
     end
 
-    {address_type, 0} = A940.Address.eval(state, type_expression)
+    {address_type, 0} = Expression.evaluate(next_state)
 
     address_class =
       case address_type do
@@ -323,6 +327,16 @@ defmodule A940.Directive do
     A940.Op.update_opcode_table(op_code, op_value)
     # {"popdef", op_code, Integer.to_string(op_word, 8)} |> dbg()
     # {"popdef1", op_value} |> dbg
+    # Now put " BRU *" into the POP transfer table
+    {location, relocation} = State.current_location(state)
+    instruction = 0o0100000 + location
+    instruction_location = 0o100 + (div(op_word, 0o100000) &&& 0o77)
+
+    Memory.set_memory(
+      MemoryAddress.new_absolute(instruction_location),
+      MemoryValue.new(instruction, relocation)
+    )
+
     state
   end
 

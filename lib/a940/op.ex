@@ -106,6 +106,7 @@ defmodule A940.Op do
     |> Map.put("CNA", new(0o04601000, :no_address, 0))
     |> Map.put("CAB", new(0o4600004, :no_address, 0))
     |> Map.put("CBA", new(0o4600010, :no_address, 0))
+    |> Map.put("ABC", new(0o4600005, :no_address, 0))
     |> Map.put("BAC", new(0o4600012, :no_address, 0))
     |> Map.put("XAB", new(0o4600014, :no_address, 0))
     |> Map.put("CBX", new(0o4600020, :no_address, 0))
@@ -152,7 +153,7 @@ defmodule A940.Op do
     |> Map.put("FFSBD", new(0o52300000, :yes_address, 14))
     |> Map.put("FFSI", new(0o53300000, :yes_address, 14))
     |> Map.put("FFSID", new(0o51300000, :yes_address, 14))
-    |> Map.put("MFP", new(0o55400000, :yes_address, 14))
+    |> Map.put("FMP", new(0o55400000, :yes_address, 14))
     |> Map.put("FSB", new(0o55500000, :yes_address, 14))
     |> Map.put("GCD", new(0o53700000, :yes_address, 14))
     |> Map.put("GCI", new(0o56500000, :yes_address, 14))
@@ -284,8 +285,10 @@ defmodule A940.Op do
   def process_op_not_directive(%State{} = state) do
     # TODO update to handle cases where address_tokens_list evaluates to an expression instead
     # of a nmber.
-    if state.line_number == 243 do
-      {state.label_tokens, state.opcode_tokens, state.address_tokens_list, state.operation} |> dbg
+    if state.line_number == 1125 do
+      {state.label_tokens, state.opcode_tokens, state.address_tokens_list} |> dbg
+      Map.get(state.lines, 1125) |> dbg
+      Enum.filter(state.tokens_list, fn token -> token.line_number == 1125 end) |> dbg
     end
 
     tag_tuple =

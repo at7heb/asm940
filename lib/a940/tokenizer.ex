@@ -11,7 +11,7 @@ defmodule A940.Tokenizer do
   @symbol ~r/^[A-Z0-9:]+/
   @string_6 ~r/^'([^']{0,4})'/
   @string_long ~r/^'([^']{5,})'/
-  @delimiter_diagraphs ~r/^(>=)|(<=)/
+  @delimiter_diagraphs ~r/^(>=)|^(<=)/
   @delimiter ~r/^[-+*\/,()=.$_"'←\\]/
   @special ~r/^[;<>?[\]!%&@]/
   @illegal ~r/^[#^]+/

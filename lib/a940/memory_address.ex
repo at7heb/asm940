@@ -10,4 +10,11 @@ defmodule A940.MemoryAddress do
       when is_integer(location) and location >= 0 and location <= 16383 do
     %__MODULE__{location: location, relocation: 0}
   end
+
+  def new(location, relocation)
+      when is_integer(location) and location >= 0 and location <= 16383 do
+    %__MODULE__{location: location, relocation: relocation}
+  end
+
+  def new({location, relocation}), do: new(location, relocation)
 end

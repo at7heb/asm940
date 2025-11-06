@@ -43,13 +43,6 @@ defmodule A940.Pass1 do
             # tokens |> dbg
             else: get_address_tokens(tokens, state)
 
-        # |> dbg
-        if state.line_number == 61 do
-          {state.line_number, state.ident, state.label_tokens, state.opcode_tokens,
-           state.address_tokens_list, Enum.at(state.tokens_list, 60)}
-          |> dbg
-        end
-
         Op.process_opcode_again(state)
       end
     else
