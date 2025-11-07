@@ -11,7 +11,7 @@ defmodule A940.Tokenizer do
   @symbol ~r/^[A-Z0-9:]+/
   @string_6 ~r/^'([^']{0,4})'/
   @string_long ~r/^'([^']{5,})'/
-  @delimiter_diagraphs ~r/^(>=)|^(<=)/
+  @delimiter_diagraphs ~r/^(>=)|^(<=)|^(\.&)/
   @delimiter ~r/^[-+*\/,()=.$_"'←\\]/
   @special ~r/^[;<>?[\]!%&@]/
   @illegal ~r/^[#^]+/
@@ -19,6 +19,8 @@ defmodule A940.Tokenizer do
   @eol_tuple {:eol, ""}
 
   def tokens(line_number, line, flags) when is_integer(line_number) and is_binary(line) do
+    # IO.puts("-------------Creating tokens for line #{line_number}-------------")
+
     cond do
       String.length(line) == 0 ->
         %__MODULE__{line_number: line_number, tokens: [@eol_tuple]}
@@ -30,14 +32,17 @@ defmodule A940.Tokenizer do
         }
 
       true ->
-        %__MODULE__{line_number: line_number, tokens: all_tokens(line, [], flags)}
+        %__MODULE__{
+          line_number: line_number,
+          tokens: all_tokens(line, [], flags, line_number)
+        }
     end
   end
 
-  def all_tokens(line, token_list, _flags) when line == "",
+  def all_tokens(line, token_list, _flags, _line_number) when line == "",
     do: Enum.reverse([@eol_tuple | token_list])
 
-  def all_tokens(line, token_list, flags) do
+  def all_tokens(line, token_list, flags, line_number) do
     white_space = Regex.run(@white_space, line)
     decimal_number = Regex.run(@decimal_number, line)
     number = Regex.run(@number, line)
@@ -49,6 +54,10 @@ defmodule A940.Tokenizer do
     delimiter = Regex.run(@delimiter, line)
     special = Regex.run(@special, line)
     illegal = Regex.run(@illegal, line)
+
+    # if line_number == 78 do
+    #   IO.puts("tokens: |#{line}|")
+    # end
 
     {token_type, token_value, match} =
       cond do
@@ -78,6 +87,9 @@ defmodule A940.Tokenizer do
           cond do
             String.contains?(hd(symbol), ~w/A B C D E F G H I J K L M N O P Q R S T U V W X Y Z/) ->
               {:symbol, hd(symbol), hd(symbol)}
+
+            hd(symbol) == ":" ->
+              {:delimiter, ":", ":"}
 
             true ->
               {:number, decode_number(hd(number), flags), hd(number)}
@@ -118,7 +130,7 @@ defmodule A940.Tokenizer do
     new_token = {token_type, token_value}
     size_of_match = String.length(match)
     new_line = String.slice(line, size_of_match..-1//1)
-    all_tokens(new_line, [new_token | token_list], flags)
+    all_tokens(new_line, [new_token | token_list], flags, line_number)
   end
 
   def decode_number(number, flags), do: String.to_integer(number, flags.default_base)
