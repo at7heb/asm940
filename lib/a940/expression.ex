@@ -1,4 +1,5 @@
 defmodule A940.Expression do
+  alias A940.State
   import Bitwise
 
   defstruct tokens: [],
@@ -45,6 +46,11 @@ defmodule A940.Expression do
       current_relocation: current_relocation,
       operator_stack: ["["]
     }
+  end
+
+  def evaluate(%State{} = state, tokens) do
+    {location, relocation} = State.current_location(state)
+    evaluate(tokens, state.symbols, location, relocation)
   end
 
   def evaluate(tokens, symbols, current_location, current_relocation) do
