@@ -1,7 +1,4 @@
 defmodule A940.Tokenizer do
-  defstruct line_number: 1,
-            tokens: []
-
   import Bitwise
 
   @white_space ~r/^\h+/
@@ -22,20 +19,11 @@ defmodule A940.Tokenizer do
     # IO.puts("-------------Creating tokens for line #{line_number}-------------")
 
     cond do
-      String.length(line) == 0 ->
-        %__MODULE__{line_number: line_number, tokens: [@eol_tuple]}
-
       String.starts_with?(line, "*") ->
-        %__MODULE__{
-          line_number: line_number,
-          tokens: [{:comment, String.slice(line, 1..-1//1)}, @eol_tuple]
-        }
+        [{:comment, String.slice(line, 1..-1//1)}, @eol_tuple]
 
       true ->
-        %__MODULE__{
-          line_number: line_number,
-          tokens: all_tokens(line, [], flags, line_number)
-        }
+        all_tokens(line, [], flags, line_number)
     end
   end
 

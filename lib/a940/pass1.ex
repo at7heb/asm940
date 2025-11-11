@@ -1,13 +1,28 @@
 defmodule A940.Pass1 do
-  alias A940.{State, Op, Memory}
+  alias A940.{State, Op, Memory, Tokens}
 
   import Bitwise
 
   def run(%A940.State{} = state) do
-    Enum.reduce(state.tokens_list, state, fn %A940.Tokenizer{line_number: linenum, tokens: tokens},
-                                             state ->
-      assemble_statement(tokens, update_state_for_next_statement(state, linenum))
-    end)
+    infinite_enumerable = Stream.cycle([:a, :b])
+
+    Enum.reduce(
+      infinite_enumerable,
+      state,
+      fn _a, current_state ->
+        case Tokens.next() do
+          {:ok, line_number, tokens_list} ->
+            {:cont,
+             assemble_statement(
+               tokens_list,
+               update_state_for_next_statement(current_state, line_number)
+             )}
+
+          {:error, "no more tokens"} ->
+            {:halt, current_state}
+        end
+      end
+    )
   end
 
   def assemble_statement([eol: ""], %A940.State{} = state),
@@ -85,7 +100,6 @@ defmodule A940.Pass1 do
   end
 
   def get_label_tokens([{:comment, _}, {:eol, ""}], %A940.State{} = state) do
-    # {state.line_number, Enum.at(state.tokens_list, state.line_number - 1)} |> dbg
     done_with_statement(state)
   end
 

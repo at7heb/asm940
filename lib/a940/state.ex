@@ -2,7 +2,7 @@ defmodule A940.State do
   alias A940.{Address, MemoryAddress}
 
   defstruct lines: %{},
-            tokens_list: [],
+            # tokens_list: [],
             used_tokens: [],
             label_tokens: [],
             opcode_tokens: [],

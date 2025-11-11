@@ -9,23 +9,14 @@ defmodule A940.Pass0 do
   end
 
   def make_tokens(%A940.State{} = state) do
-    tokens =
-      Enum.reduce(
-        1..map_size(state.lines),
-        [],
-        fn line_number, token_list ->
-          tokens = A940.Tokenizer.tokens(line_number, Map.get(state.lines, line_number), @flagsD)
-          [tokens | token_list]
-        end
-      )
-      |> Enum.reverse()
+    Enum.each(
+      1..map_size(state.lines),
+      fn line_number ->
+        tokens = A940.Tokenizer.tokens(line_number, Map.get(state.lines, line_number), @flagsD)
+        A940.Tokens.store_tokens(line_number, tokens)
+      end
+    )
 
-    %{state | tokens_list: tokens}
+    A940.Tokens.push_range(1, map_size(state.lines))
   end
-
-  # def make_fields(%A940.State{} = state) do
-  #   tokens = state.tokens_list
-  #   Enum.take(tokens, 5) |> dbg()
-  #   state
-  # end
 end
