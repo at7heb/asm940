@@ -21,7 +21,8 @@ defmodule A940.State do
             output_symbols: true,
             f2lib?: false,
             assembling: true,
-            if_stack: []
+            if_stack: [],
+            rpt_state: %A940.Rpt{}
 
   def new(lines) do
     {_count, line_map} =

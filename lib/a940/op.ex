@@ -59,6 +59,8 @@ defmodule A940.Op do
     |> Map.put("OCT", new(0, :maybe_address, 14, &A940.Directive.oct/2, false))
     |> Map.put("OPD", new(0, :yes_address, 0, &A940.Directive.opdef/2, false))
     |> Map.put("POPD", new(0, :yes_address, 0, &A940.Directive.popdef/2, false))
+    |> Map.put("RPT", new(0, :yes_address, 0, &A940.Rpt.rpt/2, false))
+    |> Map.put("ENDR", new(0, :yes_address, 0, &A940.Rpt.endr/2, false))
     |> Map.put("ZRO", new(0, :maybe_address, 14, &A940.Directive.zro/2))
     |> Map.put("HLT", new(0o0000000, :no_address, 0))
     |> Map.put("BRU", new(0o0100000))
