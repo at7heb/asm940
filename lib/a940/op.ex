@@ -287,11 +287,6 @@ defmodule A940.Op do
   def process_op_not_directive(%State{} = state) do
     # TODO update to handle cases where address_tokens_list evaluates to an expression instead
     # of a nmber.
-    if state.line_number == 1125 do
-      {state.label_tokens, state.opcode_tokens, state.address_tokens_list} |> dbg
-      Map.get(state.lines, 1125) |> dbg
-      Enum.filter(state.tokens_list, fn token -> token.line_number == 1125 end) |> dbg
-    end
 
     tag_tuple =
       cond do
