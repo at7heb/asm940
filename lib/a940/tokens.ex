@@ -5,12 +5,16 @@ defmodule A940.Tokens do
   Permit push_range(min, max) -> :ok; This sets a range
   Permit pop_range() -> :ok; This goes to the previous range state
   Permit next() -> {:ok, line_number, tokens_list} or {:error, "no more tokens"}
+  Permit current() -> {:ok, line_number, tokens_list} or {:error, "no more tokens"}
   Permit rewind() -> :ok; So the next next() will return tokens at beginning of range
 
   If no range is active, pop_range, next, and rewind will raise a RuntimeError.
 
   The range state is {current, first, last} and push_range(min, max) pushes the
   current range state and sets the current range state to {min, min, max}
+
+  next() increments the current term in the :current_range tuple
+  current() is just like next, but doesn't change the :current_range tuple
   """
 
   def create_table() do
@@ -87,6 +91,22 @@ defmodule A940.Tokens do
         tokens = read_tokens(current)
         next = current + 1
         true = :ets.insert(@tokens_table, {:current_range, {next, min, max}})
+        {:ok, current, tokens}
+    end
+  end
+
+  def current() do
+    [{:current_range, {current, min, max}}] = :ets.lookup(@tokens_table, :current_range)
+
+    cond do
+      current < min ->
+        raise "Inconsistent token range {#{current}, #{min}, #{max}}"
+
+      current > max ->
+        {:error, "no more tokens"}
+
+      true ->
+        tokens = read_tokens(current)
         {:ok, current, tokens}
     end
   end
