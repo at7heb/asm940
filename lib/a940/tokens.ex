@@ -49,18 +49,18 @@ defmodule A940.Tokens do
   end
 
   def pop_range() do
-    range_stack_result = :ets.lookup(@tokens_table, :range_stack)
+    [{:range_stack, range_stack}] = :ets.lookup(@tokens_table, :range_stack)
 
-    case range_stack_result do
-      [{:range_stack, nil}] ->
+    cond do
+      range_stack == nil ->
         raise "Range stack is empty"
 
-      [{:range_stack, ranges_list}] ->
-        [current | rest] = ranges_list
-        :ets.insert(@tokens_table, {:current_range, current})
-        :ets.insert(@tokens_table, {:range_stack, rest})
+      is_list(range_stack) ->
+        [current | rest] = range_stack
+        true = :ets.insert(@tokens_table, {:current_range, current})
+        true = :ets.insert(@tokens_table, {:range_stack, rest})
 
-      _ ->
+      true ->
         raise("Unexpected result in pop_range()")
     end
 
@@ -68,8 +68,8 @@ defmodule A940.Tokens do
   end
 
   def push_range(min, max) when is_integer(min) and is_integer(max) do
-    current = :ets.lookup(@tokens_table, :current_range)
-    stack = :ets.lookup(@tokens_table, :range_stack)
+    [{:current_range, current}] = :ets.lookup(@tokens_table, :current_range)
+    [{:range_stack, stack}] = :ets.lookup(@tokens_table, :range_stack)
     new_current = {min, min, max}
     new_stack = [current | stack]
     true = :ets.insert(@tokens_table, {:current_range, new_current})

@@ -6,7 +6,7 @@ defmodule A940.Pass1 do
   def run(%A940.State{} = state) do
     infinite_enumerable = Stream.cycle([:a, :b])
 
-    Enum.reduce(
+    Enum.reduce_while(
       infinite_enumerable,
       state,
       fn _a, current_state ->

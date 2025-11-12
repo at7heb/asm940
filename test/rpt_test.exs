@@ -6,7 +6,8 @@ defmodule RptTest do
   test "easy RPT" do
     source = [
       "A IDENT",
-      "FIST LDX 10",
+      "B EAX 1",
+      "FIRST LDX 10",
       " RPT 2",
       " LDA 1",
       " LDB B",
@@ -17,7 +18,12 @@ defmodule RptTest do
       " END"
     ]
 
-    a_out = Conductor.runner(source)
+    _a_out = Conductor.runner(source)
+
+    addresses = A940.Memory.all_addresses()
+    # words = Enum.map(addresses, fn address -> A940.Memory.get_memory(address) end)
+    # Enum.each(words, fn word -> IO.puts("#{inspect(word)}") end)
+    assert length(addresses) == 11
   end
 
   # test RPT inside IF false / ENDIF

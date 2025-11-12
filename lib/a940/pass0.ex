@@ -18,5 +18,6 @@ defmodule A940.Pass0 do
     )
 
     A940.Tokens.push_range(1, map_size(state.lines))
+    state
   end
 end

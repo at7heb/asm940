@@ -2,12 +2,14 @@ defmodule A940.Rpt do
   alias A940.{Expression, State}
 
   defstruct starting_statement_number: 0,
+            ending_statement_number: 0,
             level: 0,
             counter: 0,
             maximum: 0,
-            increment: 0,
+            increment: 1,
             increment_list: [],
-            nested_repeats: []
+            nested_repeats: [],
+            first_time: false
 
   def rpt(%State{} = state, :first_call) do
     state
@@ -19,8 +21,12 @@ defmodule A940.Rpt do
 
     rpt_state =
       case Enum.slice(first_address, 0..2) do
-        [{:delimiter, "("}, {:symbol, _}, {:delimiter, "="}] -> if_increment(state, first_address)
-        _ -> %__MODULE__{counter: 1, maximum: Expression.evaluate(state, first_address)}
+        [{:delimiter, "("}, {:symbol, _}, {:delimiter, "="}] ->
+          if_increment(state, first_address)
+
+        _ ->
+          {maximum_count, 0} = Expression.evaluate(state, first_address)
+          %__MODULE__{counter: 1, maximum: maximum_count}
       end
 
     if rpt_state.counter > rpt_state.maximum do
@@ -30,7 +36,8 @@ defmodule A940.Rpt do
     rpt_state = %{
       rpt_state
       | starting_statement_number: state.line_number + 1,
-        nested_repeats: [state.rpt_state | rpt_state.nested_repeats]
+        nested_repeats: [state.rpt_state | rpt_state.nested_repeats],
+        first_time: true
     }
 
     %{state | rpt_state: rpt_state}
@@ -41,17 +48,42 @@ defmodule A940.Rpt do
   end
 
   def endr(%State{} = state, :second_call) do
-    rpt = state.rpt_state
+    endr(state, state.rpt_state)
+  end
+
+  def endr(%State{} = state, %__MODULE__{first_time: true} = rpt) do
+    new_counter = rpt.counter + rpt.increment
+
+    if new_counter <= rpt.maximum do
+      new_rpt = %{
+        rpt
+        | counter: new_counter,
+          ending_statement_number: state.line_number,
+          first_time: false
+      }
+
+      # IO.puts("ENDR 1st cont ---- #{inspect(new_rpt)}")
+      A940.Tokens.push_range(rpt.starting_statement_number, state.line_number)
+      %{state | rpt_state: new_rpt, line_number: rpt.starting_statement_number}
+    else
+      next_rpt_state = hd(rpt.nested_repeats)
+      # IO.puts("ENDR 1st term ---- #{inspect(next_rpt_state)}")
+      %{state | rpt_state: next_rpt_state}
+    end
+  end
+
+  def endr(%State{} = state, %__MODULE__{first_time: false} = rpt) do
     new_counter = rpt.counter + rpt.increment
 
     if new_counter <= rpt.maximum do
       new_rpt = %{rpt | counter: new_counter}
-      IO.puts("ENDR cont ---- #{inspect(new_rpt)}")
-
+      # IO.puts("ENDR 2nd cont ---- #{inspect(new_rpt)}")
+      A940.Tokens.rewind()
       %{state | rpt_state: new_rpt, line_number: rpt.starting_statement_number}
     else
       next_rpt_state = hd(rpt.nested_repeats)
-      IO.puts("ENDR term ---- #{inspect(next_rpt_state)}")
+      # IO.puts("ENDR 2nd term ---- #{inspect(next_rpt_state)}")
+      A940.Tokens.pop_range()
       %{state | rpt_state: next_rpt_state}
     end
   end
