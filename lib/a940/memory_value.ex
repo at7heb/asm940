@@ -29,4 +29,13 @@ defmodule A940.MemoryValue do
 
   def merge_value(%__MODULE__{value: content} = memory_value, merge_value),
     do: %{memory_value | value: content ||| merge_value}
+
+  #   %A940.MemoryValue{value: 2064385, address_expression: [], relocation_value: 0},
+
+  defimpl Inspect, for: __MODULE__ do
+    def inspect(memory_value, _opts) do
+      "<mem: #{Integer.to_string(memory_value.value, 8)}, addr: " <>
+        "#{inspect(memory_value.address_expression)}, relocation: #{memory_value.relocation_value}>"
+    end
+  end
 end
