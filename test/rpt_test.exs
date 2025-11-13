@@ -3,6 +3,7 @@ defmodule RptTest do
 
   alias A940.Conductor
 
+  # @tag :skip
   test "easy RPT" do
     source = [
       "A IDENT",
@@ -24,6 +25,48 @@ defmodule RptTest do
     # words = Enum.map(addresses, fn address -> A940.Memory.get_memory(address) end)
     # Enum.each(words, fn word -> IO.puts("#{inspect(word)}") end)
     assert length(addresses) == 11
+  end
+
+  test "Index Symbol RPT" do
+    source = [
+      "A IDENT",
+      "LL EQU 16B",
+      "* FIRST RPT (I=1-1,1+0,LL/2)",
+      "FIRST RPT (I=1-1,LL/2)",
+      " EAX I",
+      "* NOP",
+      " ENDR",
+      "LAST DATA 55B",
+      " END"
+    ]
+
+    _a_out = Conductor.runner(source)
+
+    addresses = A940.Memory.all_addresses()
+    assert length(addresses) == 9
+
+    # words = Enum.map(addresses, fn address -> A940.Memory.get_memory(address) end)
+    # Enum.each(words, fn word -> IO.puts("#{inspect(word)}") end)
+  end
+
+  test "Index Symbol RPT + increment" do
+    source = [
+      "A IDENT",
+      "LL EQU 16B",
+      "FIRST RPT (I=1-1,2+3,LL*5)",
+      " EAX I",
+      " NOP",
+      " ENDR",
+      "LAST DATA 55B",
+      " END"
+    ]
+
+    _a_out = Conductor.runner(source)
+    IO.puts("Increment = 5 ------------------------------------")
+    addresses = A940.Memory.all_addresses()
+    words = Enum.map(addresses, fn address -> A940.Memory.get_memory(address) end)
+    Enum.each(words, fn word -> IO.puts("#{inspect(word)}") end)
+    assert length(addresses) == 31
   end
 
   # test RPT inside IF false / ENDIF

@@ -111,6 +111,12 @@ defmodule A940.State do
     %{state | symbols: new_symbols}
   end
 
+  def set_local_absolute_symbol(%__MODULE__{} = state, symbol_name, value)
+      when is_binary(symbol_name) and is_integer(value) do
+    address_struct = Address.new(value, 0, false, false)
+    %{state | symbols: Map.put(state.symbols, symbol_name, address_struct)}
+  end
+
   # This is used when the label isn't for an address, like if it is a macro
   def remove_symbol(%__MODULE__{} = state, symbol_name)
       when is_binary(symbol_name) do
