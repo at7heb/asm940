@@ -56,6 +56,8 @@ defmodule A940.Op do
     |> Map.put("LIST", new(0, :special_address, 0, &A940.Directive.ignored/2, false))
     |> Map.put("NOLIST", new(0, :special_address, 0, &A940.Directive.ignored/2, false))
     |> Map.put("LOCAL", new(0, :special_address, 0, &A940.Directive.not_implemented/2, false))
+    |> Map.put("MACRO", new(0, :special_address, 0, &A940.Macro.macro/2, false))
+    |> Map.put("ENDM", new(0, :no_address, 0, &A940.Macro.endm/2, false))
     |> Map.put("OCT", new(0, :maybe_address, 14, &A940.Directive.oct/2, false))
     |> Map.put("OPD", new(0, :yes_address, 0, &A940.Directive.opdef/2, false))
     |> Map.put("POPD", new(0, :yes_address, 0, &A940.Directive.popdef/2, false))
@@ -370,9 +372,29 @@ defmodule A940.Op do
 
   def update_opcode_table(opcode, %__MODULE__{} = op) when is_binary(opcode) do
     :ets.insert(@opcode_table, {opcode, op})
-    :ets.lookup(@opcode_table, opcode)
+    # :ets.lookup(@opcode_table, opcode)
     [{:opdefs, defs}] = :ets.lookup(@opcode_table, :opdefs)
     :ets.insert(@opcode_table, {:opdefs, [opcode | defs]})
     :ok
+  end
+
+  def update_opcode_table(%A940.Macro{} = mcro) do
+    mcro_name = A940.Macro.get_name(mcro)
+    previous = :ets.lookup(@opcode_table, mcro_name)
+
+    if [] != previous do
+      IO.puts("Warning: macro #{mcro_name} is redefining that opcode")
+    end
+
+    new_op = new(0, macro_address_type(mcro), 0, &A940.Macro.call/2, true)
+    # Map.put("IDENT", new(0, :no_address, 0, &A940.Directive.ident/2, false))
+    true = :ets.insert(@opcode_table, {mcro_name, new_op})
+  end
+
+  def macro_address_type(%A940.Macro{} = mcro) do
+    cond do
+      A940.Macro.has_address(mcro) -> :special_address
+      true -> :no_address
+    end
   end
 end

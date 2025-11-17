@@ -10,6 +10,8 @@ defmodule A940.State do
             operation: %A940.Op{},
             symbols: %{},
             macros: %{},
+            current_macro: nil,
+            macro_stack: [],
             flags: %A940.Flags{},
             # this keeps counting up with each instruction or data word(s)
             # default relocation value of 1 (implicit, not stored)
@@ -124,59 +126,6 @@ defmodule A940.State do
     new_symbols = Map.delete(state.symbols, symbol_name)
     %{state | symbols: new_symbols}
   end
-
-  # def addzz_memory(%__MODULE__{} = state, value, relocation)
-  #     when is_integer(value) and is_integer(relocation) do
-  #   memory_value = A940.MemoryValue.new(value, relocation)
-  #   save_memory(state, memory_value)
-  # end
-
-  # def addzz_memory(%__MODULE__{} = state, value, address_expression_tokens)
-  #     when is_integer(value) and is_list(address_expression_tokens) do
-  #   memory_value = A940.MemoryValue.new(value, address_expression_tokens)
-  #   save_memory(state, memory_value)
-  # end
-
-  # def save_memory(%__MODULE__{} = state, %A940.MemoryValue{} = memory_value) do
-  #   new_code = Map.put(state.code, state.location_relative, memory_value)
-  #   new_location = state.location_relative + 1
-
-  #   new_abs_location =
-  #     if state.flags.relocating, do: state.location_absolute, else: state.location_absolute + 1
-
-  #   %{
-  #     state
-  #     | code: new_code,
-  #       location_relative: new_location,
-  #       location_absolute: new_abs_location
-  #   }
-  # end
-
-  # def merge_address(%__MODULE__{} = state, address_value, location)
-  #     when address_value >= 0 and address_value <= 16383 and location >= 0 and location <= 16383 do
-  #   current_word = Map.get(state.code, location, :illegal)
-  #   # don't change the relocation
-  #   %{
-  #     state
-  #     | code:
-  #         Map.put(state.code, location, A940.MemoryValue.merge_value(current_word, address_value))
-  #   }
-  # end
-
-  # def merge_tag(%__MODULE__{} = state, tag_value, location)
-  #     when tag_value >= 0 and tag_value <= 7 and location >= 0 and location <= 16383 do
-  #   current_word = Map.get(state.code, location, :illegal)
-
-  #   %{
-  #     state
-  #     | code:
-  #         Map.put(
-  #           state.code,
-  #           location,
-  #           A940.MemoryValue.merge_value(current_word, tag_value <<< 21)
-  #         )
-  #   }
-  # end
 
   def current_location(%__MODULE__{} = state) do
     address_value =

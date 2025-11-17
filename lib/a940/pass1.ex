@@ -14,7 +14,7 @@ defmodule A940.Pass1 do
           {:ok, line_number, tokens_list} ->
             {:cont,
              assemble_statement(
-               tokens_list,
+               A940.Macro.expand_dummy(state, tokens_list),
                update_state_for_next_statement(current_state, line_number)
              )}
 
@@ -38,6 +38,8 @@ defmodule A940.Pass1 do
   # end
 
   def assemble_statement(tokens, %A940.State{} = state) do
+    tokens = Macro.expand_tokens(tokens, state)
+
     # state = %{state | operation: nil}
     {tokens, state} = get_label_tokens(tokens, state)
 
@@ -48,7 +50,10 @@ defmodule A940.Pass1 do
         IO.puts("Not assembling line #{state.line_number} -------------------------------")
         state
       else
-        IO.puts("    Assembling line #{state.line_number} -------------------------------")
+        IO.puts(
+          "    Assembling line #{state.line_number}: #{Map.get(state.lines, state.line_number)} -------------------------------"
+        )
+
         state = Op.process_opcode(state)
         # state.operation |> dbg
 
@@ -163,10 +168,6 @@ defmodule A940.Pass1 do
   def get_address_tokens(tokens, %State{} = state) do
     {[], %{state | address_tokens_list: Enum.reverse(get_address_tokens([], tokens, state))}}
   end
-
-  # def get_address_tokens(addresses_tokens_list, [], %State{} = state) do
-  #   %{state | address_tokens_list: Enum.reverse(addresses_tokens_list)}
-  # end
 
   def get_address_tokens(addresses_tokens_list, tokens, %State{} = state) do
     {address_field, rest, terminating_token} =

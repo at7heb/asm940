@@ -67,7 +67,7 @@ defmodule A940.Tokens do
     :ok
   end
 
-  def push_range(min, max) when is_integer(min) and is_integer(max) do
+  def push_range(min, max) when is_integer(min) and is_integer(max) and min > 0 do
     [{:current_range, current}] = :ets.lookup(@tokens_table, :current_range)
     [{:range_stack, stack}] = :ets.lookup(@tokens_table, :range_stack)
     new_current = {min, min, max}
@@ -79,6 +79,7 @@ defmodule A940.Tokens do
 
   def next() do
     [{:current_range, {current, min, max}}] = :ets.lookup(@tokens_table, :current_range)
+    # {current, min, max} |> dbg
 
     cond do
       current < min ->
