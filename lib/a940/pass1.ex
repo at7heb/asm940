@@ -38,7 +38,8 @@ defmodule A940.Pass1 do
   # end
 
   def assemble_statement(tokens, %A940.State{} = state) do
-    tokens = Macro.expand_tokens(tokens, state)
+    tokens =
+      A940.Macro.expand_macro_tokens(tokens, state)
 
     # state = %{state | operation: nil}
     {tokens, state} = get_label_tokens(tokens, state)

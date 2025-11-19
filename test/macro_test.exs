@@ -3,7 +3,7 @@ defmodule MacroTest do
 
   alias A940.Conductor
 
-  @tag :skip
+  # @tag :skip
   test "easy MACRO" do
     source = [
       "A IDENT",
@@ -39,7 +39,7 @@ defmodule MacroTest do
       "DOUBLE MACRO D",
       " DATA 2*D(1)",
       " ENDM",
-      " DOUBLE 10,40B",
+      " DOUBLE 40B",
       " EAX 5B3",
       " END"
     ]
@@ -49,6 +49,6 @@ defmodule MacroTest do
     addresses = A940.Memory.all_addresses()
     words = Enum.map(addresses, fn address -> A940.Memory.get_memory(address) end)
     Enum.each(words, fn word -> IO.puts("#{inspect(word)}") end)
-    assert length(addresses) == 8
+    assert length(addresses) == 2
   end
 end

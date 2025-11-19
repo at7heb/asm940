@@ -57,6 +57,8 @@ defmodule A940.Op do
     |> Map.put("NOLIST", new(0, :special_address, 0, &A940.Directive.ignored/2, false))
     |> Map.put("LOCAL", new(0, :special_address, 0, &A940.Directive.not_implemented/2, false))
     |> Map.put("MACRO", new(0, :special_address, 0, &A940.Macro.macro/2, false))
+    |> Map.put("NARG", new(0, :special_address, 0, &A940.Macro.narg/2, false))
+    |> Map.put("NCHAR", new(0, :special_address, 0, &A940.Macro.nchar/2, false))
     |> Map.put("ENDM", new(0, :no_address, 0, &A940.Macro.endm/2, false))
     |> Map.put("OCT", new(0, :maybe_address, 14, &A940.Directive.oct/2, false))
     |> Map.put("OPD", new(0, :yes_address, 0, &A940.Directive.opdef/2, false))

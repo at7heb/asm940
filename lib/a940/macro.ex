@@ -46,6 +46,18 @@ defmodule A940.Macro do
     %{state | current_macro: current, macro_stack: stack}
   end
 
+  def narg(%State{} = state, :first_call), do: state
+
+  def narg(%State{} = state, :second_call) do
+    state
+  end
+
+  def nchar(%State{} = state, :first_call), do: state
+
+  def nchar(%State{} = state, :second_call) do
+    state
+  end
+
   # the call must push the tokens lines, parse the arguments, and arrange for the dummy and generated symbol processing
   # as the macro body tokens are fetched for assembly.
   def call(%State{} = state, :first_call), do: state
@@ -115,7 +127,7 @@ defmodule A940.Macro do
   end
 
   def process_dummy_tokens(%__MODULE__{} = mcro, %State{} = state, dummy_tokens) do
-    {mcro, dummy_tokens} |> dbg
+    # {mcro, dummy_tokens} |> dbg
 
     case dummy_tokens do
       [[{:symbol, dummy}], [{:symbol, generated}], [gen_count_expression]] ->
@@ -128,7 +140,8 @@ defmodule A940.Macro do
       [[]] ->
         %{mcro | dummy_name: "", generated_name: "", generated_count: 0}
     end
-    |> dbg
+
+    # |> dbg
   end
 
   def get_macro_arguments(%State{} = state) do
@@ -139,11 +152,82 @@ defmodule A940.Macro do
   end
 
   # empty tokens
-  def expand_tokens([], _state), do: []
+  def expand_macro_tokens([], _state), do: []
 
-  def expand_tokens(tokens, %State{current_macro: nil} = _state), do: tokens
+  def expand_macro_tokens(tokens, %State{current_macro: nil} = _state), do: tokens
 
-  def expand_tokens(tokens, %State{current_macro: mcro} = state) do
+  def expand_macro_tokens(tokens, %State{current_macro: mcro} = state) do
+    # look for dummy symbol followed by "("; then look for generated symbol followed by "("
+    if mcro.dummy_name == "" do
+      tokens
+    else
+      find_process_macro_symbols(tokens, [], state)
+      # |> List.flatten() |> Enum.reverse()
+    end
+
+    # state isn't changed; just the tokens
+  end
+
+  def find_process_macro_symbols([], new_tokens_list, %State{} = _state),
+    do: new_tokens_list |> Enum.reverse() |> List.flatten()
+
+  def find_process_macro_symbols(tokens, new_tokens_list, %State{} = state)
+      when is_list(tokens) do
+    mcro = state.current_macro
+    dummy_symbol_name = mcro.dummy_name
+    generated_symbol_name = mcro.generated_name
+
+    case Enum.slice(tokens, 0..1) do
+      [{:symbol, ^dummy_symbol_name}, {:delimiter, "("}] ->
+        {index_tokens, remaining_tokens} = get_balanced_tokens(Enum.slice(tokens, 2..-1//1))
+        index_tokens = find_process_macro_symbols(index_tokens, [], state)
+        {index, 0} = A940.Expression.evaluate(state, index_tokens)
+        new_tokens = Enum.slice(mcro.actual_arguments, (index - 1)..(index - 1))
+        find_process_macro_symbols(remaining_tokens, [new_tokens | new_tokens_list], state)
+
+      [{:symbol, ^generated_symbol_name}, {:delimiter, "("}] ->
+        # almost the same, but return {:symbol, ...}
+        {index_tokens, remaining_tokens} = get_balanced_tokens(Enum.slice(tokens, 2..-1//1))
+        index_tokens = find_process_macro_symbols(index_tokens, [], state)
+        {index, 0} = A940.Expression.evaluate(state, index_tokens)
+        index = index + mcro.generated_index
+        new_token = {:symbol, generated_symbol_name <> Integer.to_string(index)}
+        find_process_macro_symbols(remaining_tokens, [new_token | new_tokens_list], state)
+
+      _ ->
+        find_process_macro_symbols(tl(tokens), [hd(tokens) | new_tokens_list], state)
+    end
+  end
+
+  def get_balanced_tokens(tokens, open \\ "(", close \\ ")") when is_list(tokens) do
+    # look_for = {:delimiter, balancer}
+    # return everything before the balanced ) (or balancer)
+
+    {inner_tokens, rest_of_tokens} = get_balanced_tokens(tokens, [], 1, open, close)
+    {Enum.reverse(inner_tokens), rest_of_tokens}
+  end
+
+  def get_balanced_tokens([], _inner_tokens, level, _open, close) do
+    raise("Unbalanced tokens, no {:delimiter, #{close}} found; level=#{level}")
+  end
+
+  def get_balanced_tokens([first | rest] = _tokens, inner_tokens, level, open, close)
+      when level >= 1 do
+    case first do
+      {:delimiter, ^open} ->
+        get_balanced_tokens(rest, [first | inner_tokens], level + 1, open, close)
+
+      {:delimiter, ^close} ->
+        if level == 1 do
+          # do not return closing delimiter
+          {inner_tokens, rest}
+        else
+          get_balanced_tokens(rest, [first | inner_tokens], level - 1, open, close)
+        end
+
+      _ ->
+        get_balanced_tokens(rest, [first | inner_tokens], level, open, close)
+    end
   end
 
   def has_address(%__MODULE__{dummy_name: ""} = _mcro), do: false
