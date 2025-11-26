@@ -159,4 +159,15 @@ defmodule A940.Tokenizer do
     |> Enum.chunk_every(3, 3, [0, 0])
     |> Enum.map(fn [h, m, l] -> h <<< 16 ||| m <<< 8 ||| l end)
   end
+
+  def is_concatenation?({:delimiter, ".&"} = token), do: dbg(token)
+  true
+  def is_concatenation?(token), do: dbg(token)
+  false
+
+  def is_not_concatenation?(token), do: not is_concatenation?(token)
+
+  def token_value({:number, value, text}), do: text
+  def token_value({:number, value}), do: "!!!#{value}"
+  def token_value({_, text}), do: text
 end

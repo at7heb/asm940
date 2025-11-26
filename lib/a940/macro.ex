@@ -1,5 +1,5 @@
 defmodule A940.Macro do
-  alias A940.{State, Tokens}
+  alias A940.{State, Tokens, Tokenizer}
 
   defstruct macro_name: "",
             starting_line_number: 0,
@@ -162,6 +162,8 @@ defmodule A940.Macro do
       tokens
     else
       find_process_macro_symbols(tokens, [], state)
+      |> find_process_concatenation(state)
+
       # |> List.flatten() |> Enum.reverse()
     end
 
@@ -228,6 +230,29 @@ defmodule A940.Macro do
       _ ->
         get_balanced_tokens(rest, [first | inner_tokens], level, open, close)
     end
+  end
+
+  def find_process_concatenation(tokens, %State{} = state) when is_list(tokens) do
+    if find_concatenation(tokens) do
+      process_concatenation(tokens, state)
+    else
+      tokens
+    end
+  end
+
+  def find_concatenation(tokens) when is_list(tokens) do
+    Enum.any?(tokens, &Tokenizer.is_concatenation?(&1)) |> dbg
+  end
+
+  def process_concatenation(tokens, %State{} = state) when is_list(tokens) do
+    tokens
+    |> dbg
+    |> Enum.filter(&Tokenizer.is_not_concatenation?(&1))
+    |> dbg
+    |> Enum.map(fn token -> Tokenizer.token_value(token) end)
+    |> dbg
+    |> Enum.join()
+    |> dbg
   end
 
   def has_address(%__MODULE__{dummy_name: ""} = _mcro), do: false
