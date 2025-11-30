@@ -49,12 +49,14 @@ defmodule A940.Macro do
   def narg(%State{} = state, :first_call), do: state
 
   def narg(%State{} = state, :second_call) do
+    {state.label_tokens, state.address_tokens_list} |> dbg
     state
   end
 
   def nchar(%State{} = state, :first_call), do: state
 
   def nchar(%State{} = state, :second_call) do
+    {state.label_tokens, state.address_tokens_list} |> dbg
     state
   end
 
@@ -131,7 +133,7 @@ defmodule A940.Macro do
 
     case dummy_tokens do
       [[{:symbol, dummy}], [{:symbol, generated}], [gen_count_expression]] ->
-        gen_count = A940.Expression.evaluate(state, gen_count_expression)
+        gen_count = A940.Expression.evaluate(state, [gen_count_expression])
         %{mcro | dummy_name: dummy, generated_name: generated, generated_count: gen_count}
 
       [[{:symbol, dummy}]] ->
@@ -235,24 +237,23 @@ defmodule A940.Macro do
   def find_process_concatenation(tokens, %State{} = state) when is_list(tokens) do
     if find_concatenation(tokens) do
       process_concatenation(tokens, state)
+      |> A940.Pass0.make_tokens_for_one_line(state.line_number)
     else
       tokens
     end
   end
 
   def find_concatenation(tokens) when is_list(tokens) do
-    Enum.any?(tokens, &Tokenizer.is_concatenation?(&1)) |> dbg
+    Enum.any?(tokens, &Tokenizer.is_concatenation?(&1))
   end
 
-  def process_concatenation(tokens, %State{} = state) when is_list(tokens) do
+  def process_concatenation(tokens, %State{} = _state) when is_list(tokens) do
     tokens
-    |> dbg
     |> Enum.filter(&Tokenizer.is_not_concatenation?(&1))
-    |> dbg
     |> Enum.map(fn token -> Tokenizer.token_value(token) end)
-    |> dbg
     |> Enum.join()
-    |> dbg
+
+    # |> dbg
   end
 
   def has_address(%__MODULE__{dummy_name: ""} = _mcro), do: false

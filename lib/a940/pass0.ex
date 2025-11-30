@@ -20,4 +20,9 @@ defmodule A940.Pass0 do
     A940.Tokens.push_range(1, map_size(state.lines))
     state
   end
+
+  def make_tokens_for_one_line(line, line_number)
+      when is_binary(line) and is_integer(line_number) do
+    A940.Tokenizer.tokens(line_number, line, @flagsD)
+  end
 end

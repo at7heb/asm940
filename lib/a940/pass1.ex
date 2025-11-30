@@ -28,15 +28,6 @@ defmodule A940.Pass1 do
   def assemble_statement([eol: ""], %A940.State{} = state),
     do: state
 
-  # def handle_statement(tokens, %A940.State{} = state) do
-  #   if not state.assembling and not is_actionable_conditional(state.opcode_tokens) do
-  #     IO.puts("Not assembling line #{state.line_number} -------------------------------")
-  #     state
-  #   else
-  #     assemble_statement(tokens, state)
-  #   end
-  # end
-
   def assemble_statement(tokens, %A940.State{} = state) do
     tokens =
       A940.Macro.expand_macro_tokens(tokens, state)
@@ -128,13 +119,17 @@ defmodule A940.Pass1 do
 
   def tokens_up_to(tokens, stop_tokens_list) when is_list(tokens) and is_list(stop_tokens_list) do
     rv_tokens =
-      Enum.reduce_while(tokens, [], fn token, token_list ->
-        cond do
-          token in stop_tokens_list -> {:halt, token_list}
-          true -> {:cont, [token | token_list]}
-        end
-      end)
-      |> Enum.reverse()
+      if hd(tokens) == {:delimiter, "("} do
+        get_balanced_tokens(tokens, tl(tokens), 1, state)
+      else
+        Enum.reduce_while(tokens, [], fn token, token_list ->
+          cond do
+            token in stop_tokens_list -> {:halt, token_list}
+            true -> {:cont, [token | token_list]}
+          end
+        end)
+        |> Enum.reverse()
+      end
 
     cond do
       length(rv_tokens) == length(tokens) ->
@@ -166,11 +161,25 @@ defmodule A940.Pass1 do
     end
   end
 
+  def get_address_tokens([], %State{} = state) do
+    {[], %{state | address_tokens_list: [[]]}}
+  end
+
   def get_address_tokens(tokens, %State{} = state) do
     {[], %{state | address_tokens_list: Enum.reverse(get_address_tokens([], tokens, state))}}
   end
 
   def get_address_tokens(addresses_tokens_list, tokens, %State{} = state) do
+    cond do
+      hd(tokens) == {:delimiter, "("} ->
+        a + 1
+
+      true ->
+        get_comma_delimited_tokens(addresses_tokens_list, tokens, state)
+    end
+  end
+
+  def get_comma_delimited_tokens(addresses_tokens_list, tokens, %State{} = state) do
     {address_field, rest, terminating_token} =
       tokens_up_to(tokens, [{:delimiter, ","}, {:spaces, " "}, {:eol, ""}])
 
@@ -186,6 +195,32 @@ defmodule A940.Pass1 do
 
       true ->
         raise "addresses terminated with unrecognized token: #{terminating_token}"
+    end
+  end
+
+  def get_balanced_tokens(_addresses_tokens_list, [], _, %State{} = state) do
+    raise "Unbalanced parentheses in address field, line #{state.line_number}"
+  end
+
+  def get_balanced_tokens(addresses_tokens_list, tokens, 0, %State{} = state) do
+    # The close {:delimiter ")"} was just added, so remove it
+    tl(addresses_tokens_list)
+  end
+
+  def get_balanced_tokens(addresses_tokens_list, tokens, count, %State{} = state)
+      when is_integer(count) do
+    # the leading ( has been swallowed;
+    first_token = hd(tokens)
+
+    cond do
+      first_token == {:delimiter, ")"} ->
+        get_balanced_tokens([first_token | addresses_tokens_list], tl(tokens), count - 1, state)
+
+      first_token == {:delimiter, "("} ->
+        get_balanced_tokens([first_token | addresses_tokens_list], tl(tokens), count + 1, state)
+
+      true ->
+        get_balanced_tokens([first_token | addresses_tokens_list], tl(tokens), count, state)
     end
   end
 
