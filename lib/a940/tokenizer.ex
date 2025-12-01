@@ -160,12 +160,12 @@ defmodule A940.Tokenizer do
     |> Enum.map(fn [h, m, l] -> h <<< 16 ||| m <<< 8 ||| l end)
   end
 
-  def is_concatenation?({:delimiter, ".&"} = token) do
+  def is_concatenation?({:delimiter, ".&"} = _token) do
     # dbg(token)
     true
   end
 
-  def is_concatenation?(token) do
+  def is_concatenation?(_token) do
     # dbg(token)
     false
   end

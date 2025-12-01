@@ -3,6 +3,9 @@ defmodule A940.Pass1 do
 
   import Bitwise
 
+  @address_terminators [{:spaces, " "}, {:eol, ""}]
+  @addresses_terminators [{:delimiter, ","}, {:spaces, " "}, {:eol, ""}]
+
   def run(%A940.State{} = state) do
     infinite_enumerable = Stream.cycle([:a, :b])
 
@@ -33,10 +36,15 @@ defmodule A940.Pass1 do
       A940.Macro.expand_macro_tokens(tokens, state)
 
     # state = %{state | operation: nil}
-    {tokens, state} = get_label_tokens(tokens, state)
+    # will return     {remaining, list-of-list-of-tokens}
+
+    {tokens, label_tokens} = get_address(tokens, state, @address_terminators)
+    state = %{state | label_tokens: label_tokens}
 
     if not state.flags.done do
-      {tokens, state} = get_opcode_tokens(tokens, state)
+      # will return     {remaining, list-of-list-of-tokens}
+      {tokens, opcode_tokens} = get_address(tokens, state, @address_terminators)
+      state = %{state | opcode_tokens: opcode_tokens}
       # {"processing opcode", state.line_number} |> dbg
       if not state.assembling and not is_actionable_conditional(state.opcode_tokens) do
         IO.puts("Not assembling line #{state.line_number} -------------------------------")
@@ -49,11 +57,17 @@ defmodule A940.Pass1 do
         state = Op.process_opcode(state)
         # state.operation |> dbg
 
-        {_, state} =
-          if state.operation.address_class == :no_address,
-            do: {[], state},
+        address_tokens_list =
+          if state.operation.address_class == :no_address do
+            [[]]
             # tokens |> dbg
-            else: get_address_tokens(tokens, state)
+            # will return     {remaining, list-of-list-of-tokens}
+          else
+            {[], tokens} = get_tokens_list(tokens, state)
+            tokens
+          end
+
+        {[], %{state | address_tokens_list: address_tokens_list}}
 
         Op.process_opcode_again(state)
       end
@@ -100,14 +114,14 @@ defmodule A940.Pass1 do
     done_with_statement(state)
   end
 
-  def get_label_tokens(
-        tokens,
-        %A940.State{} = state
-      )
-      when is_list(tokens) do
-    {label_tokens, rest, {:spaces, _}} = tokens_up_to(tokens, [{:spaces, " "}])
-    {rest, %{state | label_tokens: label_tokens}}
-  end
+  # def get_label_tokens(
+  #       tokens,
+  #       %A940.State{} = state
+  #     )
+  #     when is_list(tokens) do
+  #   {rest, label_tokens} = get_address(tokens, state, @address_terminators)
+  #   {rest, %{state | label_tokens: label_tokens}}
+  # end
 
   def get_label_tokens(tokens, %A940.State{} = state) do
     IO.puts(
@@ -117,112 +131,163 @@ defmodule A940.Pass1 do
     raise "cannot parse tokens at beginning of statment"
   end
 
-  def tokens_up_to(tokens, stop_tokens_list) when is_list(tokens) and is_list(stop_tokens_list) do
-    rv_tokens =
-      if hd(tokens) == {:delimiter, "("} do
-        get_balanced_tokens(tokens, tl(tokens), 1, state)
-      else
-        Enum.reduce_while(tokens, [], fn token, token_list ->
-          cond do
-            token in stop_tokens_list -> {:halt, token_list}
-            true -> {:cont, [token | token_list]}
-          end
-        end)
-        |> Enum.reverse()
-      end
+  # def tokens_up_to(tokens, stop_tokens_list) when is_list(tokens) and is_list(stop_tokens_list) do
+  #   rv_tokens =
+  #     if hd(tokens) == {:delimiter, "("} do
+  #       get_balanced_tokens(tokens, tl(tokens), 1, state)
+  #     else
+  #       Enum.reduce_while(tokens, [], fn token, token_list ->
+  #         cond do
+  #           token in stop_tokens_list -> {:halt, token_list}
+  #           true -> {:cont, [token | token_list]}
+  #         end
+  #       end)
+  #       |> Enum.reverse()
+  #     end
 
-    cond do
-      length(rv_tokens) == length(tokens) ->
-        {rv_tokens, [], {:eol, ""}}
+  #   cond do
+  #     length(rv_tokens) == length(tokens) ->
+  #       {rv_tokens, [], {:eol, ""}}
 
-      true ->
-        [stop_token | rest_of_tokens] = Enum.slice(tokens, length(rv_tokens)..-1//1)
-        {rv_tokens, rest_of_tokens, stop_token}
-    end
-  end
+  #     true ->
+  #       [stop_token | rest_of_tokens] = Enum.slice(tokens, length(rv_tokens)..-1//1)
+  #       {rv_tokens, rest_of_tokens, stop_token}
+  #   end
+  # end
 
   def done_with_statement(%State{} = state) do
     new_flags = %{state.flags | done: true}
     {[], %{state | flags: new_flags}}
   end
 
-  def get_opcode_tokens(tokens, %State{} = state) do
-    {opcode_tokens, rest, terminating_token} = tokens_up_to(tokens, [{:spaces, " "}, {:eol, ""}])
+  # def get_opcode_tokens(tokens, %State{} = state) do
+  #   {opcode_tokens, rest, terminating_token} = tokens_up_to(tokens, [{:spaces, " "}, {:eol, ""}])
 
-    cond do
-      state.flags.done ->
-        {[], state}
+  #   cond do
+  #     state.flags.done ->
+  #       {[], state}
 
-      terminating_token == {:spaces, " "} or terminating_token == {:eol, ""} ->
-        {rest, %{state | opcode_tokens: opcode_tokens}}
+  #     terminating_token == {:spaces, " "} or terminating_token == {:eol, ""} ->
+  #       {rest, %{state | opcode_tokens: opcode_tokens}}
 
-      true ->
-        raise "badly formed opcode or terminator #{opcode_tokens} #{terminating_token} in statement #{state.line_number}"
+  #     true ->
+  #       raise "badly formed opcode or terminator #{opcode_tokens} #{terminating_token} in statement #{state.line_number}"
+  #   end
+  # end
+
+  def get_tokens_list([], %State{} = _state) do
+    {[], [[]]}
+  end
+
+  def get_tokens_list(tokens, %State{} = state) do
+    get_addresses(tokens, state, [])
+  end
+
+  # this is called get_addresses(), but it can also get the tokens in the opcode
+  # returns: {remaining, tokens_of_one_address_field}
+  def get_addresses([], %State{} = _state, addresses)
+      when is_list(addresses), do: {[], addresses}
+
+  def get_addresses(tokens, %State{} = state, addresses) when is_list(addresses) do
+    {address, terminator, remaining_tokens} = get_address(tokens, state, @addresses_terminators)
+
+    if terminator not in @addresses_terminators do
+      raise "Invalid address terminator : #{inspect(terminator)}, line #{state.line_number}"
+    end
+
+    addresses = addresses ++ [strip_outer_parens(address)]
+
+    if terminator == {:spaces, " "} do
+      {remaining_tokens, addresses}
+    else
+      get_addresses(remaining_tokens, state, addresses)
     end
   end
 
-  def get_address_tokens([], %State{} = state) do
-    {[], %{state | address_tokens_list: [[]]}}
+  # return {tokens, state, remaining}, without the terminator
+  def get_address(tokens, state, terminator) do
+    {tokens, state.line_number} |> dbg
+    get_address1(tokens, state, [], terminator)
   end
 
-  def get_address_tokens(tokens, %State{} = state) do
-    {[], %{state | address_tokens_list: Enum.reverse(get_address_tokens([], tokens, state))}}
-  end
-
-  def get_address_tokens(addresses_tokens_list, tokens, %State{} = state) do
+  def get_address1([first | rest] = _tokens, %State{} = state, address, terminator) do
     cond do
-      hd(tokens) == {:delimiter, "("} ->
-        a + 1
+      first in terminator ->
+        {Enum.reverse(address), first, rest}
+
+      first == {:delimiter, "("} ->
+        {balanced, remaining} = A940.Address.get_balanced_tokens(rest)
+        # put back parentheses (backwards since this will be reversed)
+        balanced = [{:delimiter, ")"}, balanced, {:delimiter, "("}] |> List.flatten()
+        get_address1(remaining, state, [balanced | address], terminator)
 
       true ->
-        get_comma_delimited_tokens(addresses_tokens_list, tokens, state)
+        get_address1(rest, state, [first | address], terminator)
     end
   end
 
-  def get_comma_delimited_tokens(addresses_tokens_list, tokens, %State{} = state) do
-    {address_field, rest, terminating_token} =
-      tokens_up_to(tokens, [{:delimiter, ","}, {:spaces, " "}, {:eol, ""}])
-
+  def strip_outer_parens([first | rest] = address) when is_list(address) do
     cond do
-      {:delimiter, ","} == terminating_token ->
-        get_address_tokens([address_field | addresses_tokens_list], rest, state)
-
-      {:spaces, " "} == terminating_token ->
-        [address_field | addresses_tokens_list]
-
-      {:eol, ""} == terminating_token ->
-        [address_field | addresses_tokens_list]
-
-      true ->
-        raise "addresses terminated with unrecognized token: #{terminating_token}"
+      first != {:delimiter, "("} -> address
+      Enum.slice(rest, -1..-1//1) == {:delimiter, ")"} -> Enum.slice(rest, 0..-2//1)
+      true -> raise("expression that should be balanced isn't #{inspect(address)}")
     end
   end
 
-  def get_balanced_tokens(_addresses_tokens_list, [], _, %State{} = state) do
-    raise "Unbalanced parentheses in address field, line #{state.line_number}"
-  end
+  # def get_address_tokens(addresses_tokens_list, tokens, %State{} = state) do
+  #   cond do
+  #     hd(tokens) == {:delimiter, "("} ->
+  #       a + 1
 
-  def get_balanced_tokens(addresses_tokens_list, tokens, 0, %State{} = state) do
-    # The close {:delimiter ")"} was just added, so remove it
-    tl(addresses_tokens_list)
-  end
+  #     true ->
+  #       get_comma_delimited_tokens(addresses_tokens_list, tokens, state)
+  #   end
+  # end
 
-  def get_balanced_tokens(addresses_tokens_list, tokens, count, %State{} = state)
-      when is_integer(count) do
-    # the leading ( has been swallowed;
-    first_token = hd(tokens)
+  # def get_comma_delimited_tokens(addresses_tokens_list, tokens, %State{} = state) do
+  #   {address_field, rest, terminating_token} =
+  #     tokens_up_to(tokens, [{:delimiter, ","}, {:spaces, " "}, {:eol, ""}])
 
-    cond do
-      first_token == {:delimiter, ")"} ->
-        get_balanced_tokens([first_token | addresses_tokens_list], tl(tokens), count - 1, state)
+  #   cond do
+  #     {:delimiter, ","} == terminating_token ->
+  #       get_address_tokens([address_field | addresses_tokens_list], rest, state)
 
-      first_token == {:delimiter, "("} ->
-        get_balanced_tokens([first_token | addresses_tokens_list], tl(tokens), count + 1, state)
+  #     {:spaces, " "} == terminating_token ->
+  #       [address_field | addresses_tokens_list]
 
-      true ->
-        get_balanced_tokens([first_token | addresses_tokens_list], tl(tokens), count, state)
-    end
-  end
+  #     {:eol, ""} == terminating_token ->
+  #       [address_field | addresses_tokens_list]
+
+  #     true ->
+  #       raise "addresses terminated with unrecognized token: #{terminating_token}"
+  #   end
+  # end
+
+  # def get_balanced_tokens(_addresses_tokens_list, [], _, %State{} = state) do
+  #   raise "Unbalanced parentheses in address field, line #{state.line_number}"
+  # end
+
+  # def get_balanced_tokens(addresses_tokens_list, tokens, 0, %State{} = state) do
+  #   # The close {:delimiter ")"} was just added, so remove it
+  #   tl(addresses_tokens_list)
+  # end
+
+  # def get_balanced_tokens(addresses_tokens_list, tokens, count, %State{} = state)
+  #     when is_integer(count) do
+  #   # the leading ( has been swallowed;
+  #   first_token = hd(tokens)
+
+  #   cond do
+  #     first_token == {:delimiter, ")"} ->
+  #       get_balanced_tokens([first_token | addresses_tokens_list], tl(tokens), count - 1, state)
+
+  #     first_token == {:delimiter, "("} ->
+  #       get_balanced_tokens([first_token | addresses_tokens_list], tl(tokens), count + 1, state)
+
+  #     true ->
+  #       get_balanced_tokens([first_token | addresses_tokens_list], tl(tokens), count, state)
+  #   end
+  # end
 
   def handle_address_fields(
         [{:spaces, _} | tokens],

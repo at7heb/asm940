@@ -183,7 +183,9 @@ defmodule A940.Macro do
 
     case Enum.slice(tokens, 0..1) do
       [{:symbol, ^dummy_symbol_name}, {:delimiter, "("}] ->
-        {index_tokens, remaining_tokens} = get_balanced_tokens(Enum.slice(tokens, 2..-1//1))
+        {index_tokens, remaining_tokens} =
+          A940.Address.get_balanced_tokens(Enum.slice(tokens, 2..-1//1))
+
         index_tokens = find_process_macro_symbols(index_tokens, [], state)
         {index, 0} = A940.Expression.evaluate(state, index_tokens)
         new_tokens = Enum.slice(mcro.actual_arguments, (index - 1)..(index - 1))
@@ -191,7 +193,9 @@ defmodule A940.Macro do
 
       [{:symbol, ^generated_symbol_name}, {:delimiter, "("}] ->
         # almost the same, but return {:symbol, ...}
-        {index_tokens, remaining_tokens} = get_balanced_tokens(Enum.slice(tokens, 2..-1//1))
+        {index_tokens, remaining_tokens} =
+          A940.Address.get_balanced_tokens(Enum.slice(tokens, 2..-1//1))
+
         index_tokens = find_process_macro_symbols(index_tokens, [], state)
         {index, 0} = A940.Expression.evaluate(state, index_tokens)
         index = index + mcro.generated_index
@@ -200,37 +204,6 @@ defmodule A940.Macro do
 
       _ ->
         find_process_macro_symbols(tl(tokens), [hd(tokens) | new_tokens_list], state)
-    end
-  end
-
-  def get_balanced_tokens(tokens, open \\ "(", close \\ ")") when is_list(tokens) do
-    # look_for = {:delimiter, balancer}
-    # return everything before the balanced ) (or balancer)
-
-    {inner_tokens, rest_of_tokens} = get_balanced_tokens(tokens, [], 1, open, close)
-    {Enum.reverse(inner_tokens), rest_of_tokens}
-  end
-
-  def get_balanced_tokens([], _inner_tokens, level, _open, close) do
-    raise("Unbalanced tokens, no {:delimiter, #{close}} found; level=#{level}")
-  end
-
-  def get_balanced_tokens([first | rest] = _tokens, inner_tokens, level, open, close)
-      when level >= 1 do
-    case first do
-      {:delimiter, ^open} ->
-        get_balanced_tokens(rest, [first | inner_tokens], level + 1, open, close)
-
-      {:delimiter, ^close} ->
-        if level == 1 do
-          # do not return closing delimiter
-          {inner_tokens, rest}
-        else
-          get_balanced_tokens(rest, [first | inner_tokens], level - 1, open, close)
-        end
-
-      _ ->
-        get_balanced_tokens(rest, [first | inner_tokens], level, open, close)
     end
   end
 

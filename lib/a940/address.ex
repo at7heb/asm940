@@ -82,4 +82,35 @@ defmodule A940.Address do
       # |> dbg
     end
   end
+
+  def get_balanced_tokens(tokens, open \\ "(", close \\ ")") when is_list(tokens) do
+    # look_for = {:delimiter, balancer}
+    # return everything before the balanced ) (or balancer)
+
+    {inner_tokens, rest_of_tokens} = get_balanced_tokens(tokens, [], 1, open, close)
+    {Enum.reverse(inner_tokens), rest_of_tokens}
+  end
+
+  def get_balanced_tokens([], _inner_tokens, level, _open, close) do
+    raise("Unbalanced tokens, no {:delimiter, #{close}} found; level=#{level}")
+  end
+
+  def get_balanced_tokens([first | rest] = _tokens, inner_tokens, level, open, close)
+      when level >= 1 do
+    case first do
+      {:delimiter, ^open} ->
+        get_balanced_tokens(rest, [first | inner_tokens], level + 1, open, close)
+
+      {:delimiter, ^close} ->
+        if level == 1 do
+          # do not return closing delimiter
+          {inner_tokens, rest}
+        else
+          get_balanced_tokens(rest, [first | inner_tokens], level - 1, open, close)
+        end
+
+      _ ->
+        get_balanced_tokens(rest, [first | inner_tokens], level, open, close)
+    end
+  end
 end
