@@ -65,6 +65,10 @@ defmodule A940.Memory do
     end
   end
 
+  def get_memory(location, relocation) do
+    get_memory(MemoryAddress.new(location, relocation))
+  end
+
   def all_addresses() do
     # Pattern: {key, :_} matches any tuple with 2 elements, returns only key
     :ets.match(@mem_ets, {:"$1", :_})

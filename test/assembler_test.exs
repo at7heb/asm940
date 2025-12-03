@@ -1,19 +1,14 @@
 defmodule AssemblerTest do
   use ExUnit.Case
 
-  alias A940.Conductor
+  alias A940.{Conductor, Memory}
 
   # @tag :skip
   test "simplest" do
     source = ["A IDENT", " LDX 10", " ZRO", "B LDA 1", " LDB B", " ZRO", " ZRO B", " END"]
     a_out = Conductor.runner(source)
     assert a_out.ident == "A"
-    assert is_map(a_out.code)
-    # a_out.code |> dbg
-    assert map_size(a_out.code) == 6
-    # a_out.symbols |> dbg
-    # assert is_list(a_out.relocations)
-    # assert length(a_out.relocations) == 0
+    for i <- 0..5, do: assert(is_struct(Memory.get_memory(i, 1)))
   end
 
   # @tag :skip
@@ -35,9 +30,7 @@ defmodule AssemblerTest do
     source = ["A IDENT", " LDA 5", " END"]
     a_out = Conductor.runner(source)
     assert a_out.ident == "A"
-    assert is_map(a_out.code)
-    assert map_size(a_out.code) == 1
-    mem_val = Map.get(a_out.code, 0)
+    mem_val = Memory.get_memory(0, 1)
 
     assert mem_val.value == 0o7_600_005
   end
@@ -47,9 +40,7 @@ defmodule AssemblerTest do
     source = ["A IDENT", " LDA 6,2", " END"]
     a_out = Conductor.runner(source)
     assert a_out.ident == "A"
-    assert is_map(a_out.code)
-    assert map_size(a_out.code) == 1
-    mem_val = Map.get(a_out.code, 0)
+    mem_val = Memory.get_memory(0, 1)
     # IO.puts("mem val #{Integer.to_string(mem_val.value, 8)}")
     assert mem_val.value == 0o27600006
     # sss = a_out.symbols
@@ -60,9 +51,7 @@ defmodule AssemblerTest do
     source = ["A IDENT", " LDA* 6,2", " END"]
     a_out = Conductor.runner(source)
     assert a_out.ident == "A"
-    assert is_map(a_out.code)
-    assert map_size(a_out.code) == 1
-    mem_val = Map.get(a_out.code, 0)
+    mem_val = Memory.get_memory(0, 1)
     # IO.puts("mem val #{Integer.to_string(mem_val.value, 8)} S/B 27640006")
     assert mem_val.value == 0o27640006
     # sss = a_out.symbols
@@ -74,9 +63,7 @@ defmodule AssemblerTest do
     source = ["A IDENT", "B LDA 6,2", "C STA* 7", " END"]
     a_out = Conductor.runner(source)
     assert a_out.ident == "A"
-    assert is_map(a_out.code)
-    assert map_size(a_out.code) == 2
-    mem_val = Map.get(a_out.code, 0)
+    mem_val = Memory.get_memory(0, 1)
     # IO.puts("mem val #{Integer.to_string(mem_val.value, 8)}")
     assert mem_val.value == 0o27_600_006
     # a_out.symbols |> dbg
@@ -84,7 +71,7 @@ defmodule AssemblerTest do
 
   # @tag :skip
   test "comment lines" do
-    source = ["A IDENT", "*****", "* EQUS", " END"]
+    source = ["A IDENT", "*****", "* EQUS", " * ABC", " END"]
     a_out = Conductor.runner(source)
     a_out
     # |> dbg
@@ -108,8 +95,9 @@ defmodule AssemblerTest do
       " END"
     ]
 
-    a_out = Conductor.runner(source)
-    bru_instruction = Map.get(a_out.code, 2)
+    _a_out = Conductor.runner(source)
+    bru_instruction = Memory.get_memory(2, 1)
+
     assert bru_instruction.value == 0o0100007
     assert bru_instruction.relocation_value == 0
   end
@@ -124,8 +112,9 @@ defmodule AssemblerTest do
       " END"
     ]
 
-    a_out = Conductor.runner(source)
-    ghi = Map.get(a_out.code, 2)
+    _a_out = Conductor.runner(source)
+    ghi = Memory.get_memory(2, 1)
+
     assert ghi.value == 0x272829
     assert ghi.relocation_value == 0
   end
@@ -160,7 +149,7 @@ defmodule AssemblerTest do
     # check no extra symbols (A in IDENT counts as one)
     assert length(Map.keys(a_out.symbols)) == 3
     # check no extra memory
-    assert length(Map.keys(a_out.code)) == length + length + 5 + 5
+    assert length(Memory.all_addresses()) == length + length + 5 + 5
   end
 
   test "COPY tests" do
@@ -170,8 +159,8 @@ defmodule AssemblerTest do
       " END"
     ]
 
-    a_out = Conductor.runner(source)
-    mem = Map.get(a_out.code, 0)
+    _a_out = Conductor.runner(source)
+    mem = Memory.get_memory(0, 1)
     assert mem.value == 0o04600114
   end
 
@@ -221,7 +210,8 @@ defmodule AssemblerTest do
     assert b_address.exported?
     assert c_address.value == 2
     assert not c_address.exported?
-    last = Map.get(a_out.code, 3)
+    # last = Map.get(a_out.code, 3)
+    last = A940.Memory.get_memory(A940.MemoryAddress.new(3, 1))
     assert last.value == 0o31_062_144
     assert last.relocation_value == 0
   end
@@ -284,10 +274,9 @@ defmodule AssemblerTest do
       " END"
     ]
 
-    a_out = Conductor.runner(source)
-    code = a_out.code
-    location_0 = Map.get(code, 0)
-    location_1 = Map.get(code, 1)
+    _a_out = Conductor.runner(source)
+    location_0 = Memory.get_memory(0, 1)
+    location_1 = Memory.get_memory(1, 1)
     assert location_0.value == location_1.value
     assert location_0.relocation_value == location_1.relocation_value
 
