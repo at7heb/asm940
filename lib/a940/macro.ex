@@ -39,25 +39,59 @@ defmodule A940.Macro do
     if state.current_macro == nil,
       do: raise("ENDM without matching macro call line #{state.line_number}")
 
+    macro_name = state.current_macro.macro_name
+    new_macro = update_for_generated_symbols(state, macro_name)
+    new_macro_map = Map.put(state.macros, macro_name, new_macro)
     # pop the tokens range and the current macro state
     A940.Tokens.pop_range()
     # state.macro_stack |> dbg
     [current | stack] = state.macro_stack
-    %{state | current_macro: current, macro_stack: stack}
+    %{state | current_macro: current, macro_stack: stack, macros: new_macro_map}
+  end
+
+  def update_for_generated_symbols(%State{} = state, macro_name) do
+    mcro = Map.get(state.macros, macro_name)
+    new_index = mcro.generated_index + mcro.generated_count
+    %{mcro | generated_index: new_index}
   end
 
   def narg(%State{} = state, :first_call), do: state
 
   def narg(%State{} = state, :second_call) do
-    {state.label_tokens, state.address_tokens_list} |> dbg
-    state
+    val = length(state.current_macro.actual_arguments)
+    # state, symbol_name, value, ?, relocation, exported
+    State.redefine_symbol_value(
+      state,
+      A940.Pass1.label_name(state.label_tokens),
+      val,
+      0,
+      false
+    )
   end
 
   def nchar(%State{} = state, :first_call), do: state
 
   def nchar(%State{} = state, :second_call) do
-    {state.label_tokens, state.address_tokens_list} |> dbg
-    state
+    # {:nchr, state.label_tokens, state.address_tokens_list} |> dbg
+
+    if length(state.address_tokens_list) != 1 do
+      raise "NCHAR needs exactly one address field element line #{state.line_number}"
+    end
+
+    if length(state.label_tokens) != 1 do
+      raise "NCHAR needs a non-global label line #{state.line_number}"
+    end
+
+    val = String.length(process_concatenation(hd(state.address_tokens_list), state))
+    # {:nchr, val} |> dbg
+
+    State.redefine_symbol_value(
+      state,
+      A940.Pass1.label_name(state.label_tokens),
+      val,
+      0,
+      false
+    )
   end
 
   # the call must push the tokens lines, parse the arguments, and arrange for the dummy and generated symbol processing
@@ -66,6 +100,7 @@ defmodule A940.Macro do
 
   def call(%State{} = state, :second_call) do
     [{:symbol, macro_name}] = state.opcode_tokens
+    # {macro_name, Map.keys(state.macros)} |> dbg
     mcro = Map.get(state.macros, macro_name)
 
     if nil == mcro,
@@ -76,7 +111,7 @@ defmodule A940.Macro do
     macro_state =
       case mcro.dummy_name do
         "" -> mcro
-        _ -> %{mcro | actual_arguments: get_macro_arguments(state)}
+        _ -> %{mcro | actual_arguments: state.address_tokens_list}
       end
 
     new_stack = [state.current_macro | state.macro_stack]
@@ -133,7 +168,11 @@ defmodule A940.Macro do
 
     case dummy_tokens do
       [[{:symbol, dummy}], [{:symbol, generated}], [gen_count_expression]] ->
-        gen_count = A940.Expression.evaluate(state, [gen_count_expression])
+        {gen_count, gen_relocation} = A940.Expression.evaluate(state, [gen_count_expression])
+
+        if gen_relocation != 0 or gen_count < 1,
+          do: raise("Macro generated symbol count >=1 and absolute line #{state.line_number}")
+
         %{mcro | dummy_name: dummy, generated_name: generated, generated_count: gen_count}
 
       [[{:symbol, dummy}]] ->
@@ -146,14 +185,6 @@ defmodule A940.Macro do
     # |> dbg
   end
 
-  def get_macro_arguments(%State{} = state) do
-    arguments = state.address_tokens_list
-    arguments |> dbg()
-    # new_mcro = %{state.current_macro | actual_arguments: arguments}
-    # %{state | current_macro: new_mcro}
-  end
-
-  # empty tokens
   def expand_macro_tokens([], _state), do: []
 
   def expand_macro_tokens(tokens, %State{current_macro: nil} = _state), do: tokens

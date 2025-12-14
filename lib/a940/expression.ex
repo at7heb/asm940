@@ -100,8 +100,8 @@ defmodule A940.Expression do
   end
 
   def ev_expression(%__MODULE__{tokens: [first | _rest]} = evstate) do
-    {evstate.tokens, evstate.operator_stack, evstate.value_stack}
-    # |> dbg
+    {first, evstate.tokens, evstate.operator_stack, evstate.value_stack}
+    |> dbg
 
     cond do
       first == {:delimiter, "="} -> throw(:literal_expression)
@@ -121,7 +121,8 @@ defmodule A940.Expression do
 
   def ev_basic_expression(%__MODULE__{} = evstate) do
     {evstate.tokens, evstate.operator_stack, evstate.value_stack}
-    # |> dbg
+    |> dbg
+
     ev_primary(evstate) |> op_and_primary()
   end
 
@@ -204,9 +205,11 @@ defmodule A940.Expression do
 
   def ev_primary(%__MODULE__{tokens: [first | _rest]} = evstate) do
     {evstate.tokens, evstate.operator_stack, evstate.value_stack}
-    #  |> dbg
-    {tag, value} = first
-    #  |> dbg
+    |> dbg
+
+    {tag, value} =
+      first
+      |> dbg
 
     cond do
       tag == :number ->

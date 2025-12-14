@@ -282,4 +282,22 @@ defmodule AssemblerTest do
 
     # a_out = Conductor.runner(source)
   end
+
+  test "Literals" do
+    source = [
+      "Z IDENT",
+      "A BSS 5",
+      "F EAX =1",
+      " SKG =F-1 ",
+      " END"
+    ]
+
+    _a_out = Conductor.runner(source)
+    location_0 = Memory.get_memory(0, 1)
+    location_1 = Memory.get_memory(1, 1)
+    assert location_0.value == location_1.value
+    assert location_0.relocation_value == location_1.relocation_value
+
+    # a_out = Conductor.runner(source)
+  end
 end

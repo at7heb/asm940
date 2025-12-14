@@ -33,13 +33,6 @@ defmodule A940.Pass1 do
         state
       )
 
-  def assemble_statement([[comment: _] | _], %A940.State{} = state),
-    do:
-      (
-        :comment1 |> dbg
-        state
-      )
-
   def assemble_statement([{:comment, _} | _], %A940.State{} = state),
     do: state
 
@@ -52,10 +45,6 @@ defmodule A940.Pass1 do
   def assemble_statement(tokens, %A940.State{} = state) do
     tokens =
       A940.Macro.expand_macro_tokens(tokens, state)
-
-    # tokens |> dbg
-    # state = %{state | operation: nil}
-    # will return     {remaining, list-of-list-of-tokens}
 
     {label_tokens, _terminator, tokens} = get_address(tokens, state, @address_terminators)
     state = %{state | label_tokens: Enum.reverse(label_tokens)}
@@ -82,7 +71,7 @@ defmodule A940.Pass1 do
             # tokens |> dbg
             # will return     {remaining, list-of-list-of-tokens}
           else
-            {[], tokens} = get_tokens_list(tokens, state)
+            {_, tokens} = get_tokens_list(tokens, state)
 
             {tokens, _terminator, _remaining_tokens} =
               get_address(tokens, state, @addresses_terminators)

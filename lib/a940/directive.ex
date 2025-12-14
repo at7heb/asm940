@@ -189,8 +189,13 @@ defmodule A940.Directive do
   def frgt(%State{} = state, :first_call), do: state
 
   def frgt(%State{} = state, :second_call) do
-    Enum.reduce(state.address_tokens_list, state, fn symbol_name, state ->
-      frgt_symbol(state, symbol_name)
+    # state.address_tokens_list |> dbg
+    # state.symbols |> dbg
+
+    Enum.reduce(state.address_tokens_list, state, fn [token], state ->
+      # token |> dbg
+      {:symbol, symbol_name} = token
+      State.remove_symbol(state, symbol_name)
     end)
   end
 
@@ -198,13 +203,6 @@ defmodule A940.Directive do
 
   def frgtop(%State{} = state, :second_call) do
     raise "FRGTOP not implemented (line #{state.line_number})"
-  end
-
-  def frgt_symbol(%State{} = state, [symbol: symbol_name] = _symbol) do
-    address = Map.get(state.symbols, symbol_name)
-    new_address = %{address | forgotten?: true}
-    new_symbols = Map.put(state.symbols, symbol_name, new_address)
-    %{state | symbols: new_symbols}
   end
 
   def f_end(%State{} = state, :first_call) do

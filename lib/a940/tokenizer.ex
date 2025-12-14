@@ -2,9 +2,12 @@ defmodule A940.Tokenizer do
   import Bitwise
 
   @white_space ~r/^\h+/
+  # @number ~r/^([-+]?\d+)/
   @number ~r/^\d+/
-  @decimal_number ~r/^(\d+)(D)([-+*\/,()=.$_" ]|$)/
-  @octal_number ~r/^([0-7]+)B([0-7]?)([-+*\/,()=.$_" ]|$)/
+  # @decimal_number ~r/^(\d+)(D)([-+*\/,()=.$_" ]|$)/
+  @decimal_number ~r/^([-+]?\d+)(D)([-+*\/,()=.$_" ]|$)/
+  # @octal_number ~r/^([0-7]+)B([0-7]?)([-+*\/,()=.$_" ]|$)/
+  @octal_number ~r/^([-+]?[0-7]+)B([0-7]?)([-+*\/,()=.$_" ]|$)/
   @symbol ~r/^[A-Z0-9:]+/
   @string_6 ~r/^'([^']{0,4})'/
   @string_long ~r/^'([^']{5,})'/
@@ -53,6 +56,7 @@ defmodule A940.Tokenizer do
           {:spaces, " ", hd(white_space)}
 
         octal_number != nil ->
+          octal_number |> dbg
           number_text = hd(octal_number)
 
           number_text =
@@ -69,6 +73,7 @@ defmodule A940.Tokenizer do
           {:number, decode_octal(octal_number), number_text}
 
         decimal_number != nil ->
+          decimal_number |> dbg
           {:number, decode_decimal(decimal_number), hd(decimal_number)}
 
         symbol != nil ->
@@ -84,7 +89,7 @@ defmodule A940.Tokenizer do
           end
 
         number != nil ->
-          {line, number}
+          {line, number} |> dbg
           {:number, decode_number(hd(number), flags), hd(number)}
 
         # symbol != nil ->
@@ -121,9 +126,10 @@ defmodule A940.Tokenizer do
     all_tokens(new_line, [new_token | token_list], flags, line_number)
   end
 
-  def decode_number(number, flags), do: String.to_integer(number, flags.default_base)
+  def decode_number(number, flags),
+    do: String.to_integer(number, flags.default_base) &&& 0o77777777
 
-  def decode_decimal(dec), do: String.to_integer(Enum.at(dec, 1))
+  def decode_decimal(dec), do: String.to_integer(Enum.at(dec, 1)) &&& 0o77777777
 
   def decode_octal(oct) do
     # oct |> dbg
