@@ -8,6 +8,6 @@ dir="lib/a940"
 
 for file in $dir/*.ex; do
     if [ -f "$file" ]; then
-        sed -i '' "s/\s*@debug_line *.*$/@debug_line $new_value/g" "$file"
+        sed -i '' "s/^ *@debug_line *.*$/  @debug_line $new_value/g" "$file"
     fi
 done
