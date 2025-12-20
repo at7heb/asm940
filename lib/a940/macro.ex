@@ -11,6 +11,8 @@ defmodule A940.Macro do
             generated_index: 0,
             level: 0
 
+  @debug_line 2650
+
   def macro(%State{} = state, :first_call), do: state
 
   def macro(%State{} = state, :second_call) do
@@ -111,12 +113,28 @@ defmodule A940.Macro do
     macro_state =
       case mcro.dummy_name do
         "" -> mcro
-        _ -> %{mcro | actual_arguments: state.address_tokens_list}
+        _ -> %{mcro | actual_arguments: remove_grouping_parens(state.address_tokens_list)}
       end
 
     new_stack = [state.current_macro | state.macro_stack]
 
     %{state | current_macro: macro_state, macro_stack: new_stack}
+  end
+
+  def remove_grouping_parens(tokens_list) when is_list(tokens_list) do
+    Enum.map(tokens_list, &remove_grouping_parens_one_field(&1))
+  end
+
+  def remove_grouping_parens_one_field(field_list) when is_list(field_list) do
+    first_token = Enum.at(field_list, 0)
+    last_token = Enum.at(field_list, -1)
+
+    if first_token == {:delimiter, "("} and last_token == {:delimiter, ")"} do
+      Enum.slice(field_list, 1..-2//1)
+    else
+      field_list
+    end
+    |> dbg
   end
 
   def expand_dummy(%State{current_macro: nil} = _state, tokens_list) when is_list(tokens_list),
@@ -251,8 +269,13 @@ defmodule A940.Macro do
     Enum.any?(tokens, &Tokenizer.is_concatenation?(&1))
   end
 
-  def process_concatenation(tokens, %State{} = _state) when is_list(tokens) do
+  def process_concatenation(tokens, %State{} = state) when is_list(tokens) do
+    if state.line_number == @debug_line do
+      tokens |> dbg
+    end
+
     tokens
+    |> List.flatten()
     |> Enum.filter(&Tokenizer.is_not_concatenation?(&1))
     |> Enum.map(fn token -> Tokenizer.token_value(token) end)
     |> Enum.join()

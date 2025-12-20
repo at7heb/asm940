@@ -1,5 +1,5 @@
 defmodule A940.Rpt do
-  alias A940.{Expression, State}
+  alias A940.{Expression, State, Pass1}
 
   defstruct starting_statement_number: 0,
             ending_statement_number: 0,
@@ -12,23 +12,34 @@ defmodule A940.Rpt do
             first_time: false,
             iteration_symbol: ""
 
+  @debug_line 2650
+
   def rpt(%State{} = state, :first_call) do
     state
   end
 
   def rpt(%State{} = state, :second_call) do
     # first_address_count = length(state.address_tokens_list |> hd)
-    first_address = state.address_tokens_list |> hd
+    first_address = state.address_tokens_list |> List.flatten()
+
+    if state.line_number == @debug_line do
+      state.address_tokens_list |> dbg
+      first_address |> dbg
+    end
 
     rpt_state =
       case Enum.slice(first_address, 0..2) do
         [{:delimiter, "("}, {:symbol, _}, {:delimiter, "="}] ->
           if_increment(state, first_address)
 
+        [delimiter: "(", symbol: "Q:1", delimiter: "="] ->
+          if_increment(state, first_address)
+
         _ ->
           {maximum_count, 0} = Expression.evaluate(state, first_address)
           %__MODULE__{counter: 1, maximum: maximum_count}
       end
+      |> dbg
 
     if rpt_state.counter > rpt_state.maximum do
       raise "Illegal RPT statement at line #{state.line_number} - MUST repeat at least once"
@@ -118,27 +129,55 @@ defmodule A940.Rpt do
   # first_address #=> [delimiter: "(", symbol: "I", delimiter: "=", number: 1]
 
   def if_increment(%State{} = state, first_address) do
-    state.address_tokens_list
-    {symbol, initial_value} = rpt_increment_initial(state, first_address)
-    rpt = %__MODULE__{iteration_symbol: symbol, counter: initial_value}
-
-    cond do
-      length(state.address_tokens_list) == 2 -> rpt_limit(state, rpt)
-      length(state.address_tokens_list) == 3 -> rpt_increment_and_limit(state, rpt)
+    if state.line_number == @debug_line do
+      {state.address_tokens_list, first_address} |> dbg
     end
+
+    {symbol, initial_value, increment_value, final_value} =
+      rpt_increment_values(state, first_address)
+
+    _rpt = %__MODULE__{
+      iteration_symbol: symbol,
+      counter: initial_value,
+      increment: increment_value,
+      maximum: final_value
+    }
   end
 
-  def rpt_increment_initial(%State{} = state, tokens) when is_list(tokens) do
+  def rpt_increment_values(%State{} = state, tokens) when is_list(tokens) do
     case Enum.slice(tokens, 0, 3) do
       [{:delimiter, "("}, {:symbol, symbol}, {:delimiter, "="}] ->
-        initial_expression = Enum.slice(tokens, 3..-1//1)
-        {value, relocation} = Expression.evaluate(state, initial_expression)
+        rest_of_specification = Enum.slice(tokens, 3..-1//1)
 
-        if relocation != 0 do
-          raise "Relocatable initial value in RPT is illegal line #{state.line_number}"
+        {initial_expression, _delimiter, final_part} =
+          Pass1.get_address(rest_of_specification, state, [{:delimiter, ","}]) |> dbg
+
+        {i_value, 0} = Expression.evaluate(state, initial_expression)
+
+        {next_expression, terminator, final_part} =
+          Pass1.get_address(final_part, state, [{:delimiter, ","}, {:delimiter, ")"}]) |> dbg
+
+        {incr_value, f_value} =
+          case terminator do
+            {:delimiter, ","} ->
+              {last_expression, _, _} = Pass1.get_address(final_part, state, [{:delimiter, ")"}])
+              {incr_value, 0} = Expression.evaluate(state, next_expression)
+              {final_value, 0} = Expression.evaluate(state, last_expression)
+              {incr_value, final_value}
+
+            {:delimiter, ")"} ->
+              {final_value, 0} = Expression.evaluate(state, next_expression)
+              {1, final_value}
+
+            _ ->
+              raise "poorly formed RPT increments line #{state.line_number}"
+          end
+
+        if state.line_number == @debug_line do
+          {i_value, incr_value, f_value} |> dbg
         end
 
-        {symbol, value}
+        {symbol, i_value, incr_value, f_value}
 
       _ ->
         raise "Unrecognized syntax in RPT line #{state.line_number}"

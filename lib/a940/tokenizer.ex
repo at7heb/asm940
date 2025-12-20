@@ -4,10 +4,10 @@ defmodule A940.Tokenizer do
   @white_space ~r/^\h+/
   # @number ~r/^([-+]?\d+)/
   @number ~r/^\d+/
-  # @decimal_number ~r/^(\d+)(D)([-+*\/,()=.$_" ]|$)/
-  @decimal_number ~r/^([-+]?\d+)(D)([-+*\/,()=.$_" ]|$)/
-  # @octal_number ~r/^([0-7]+)B([0-7]?)([-+*\/,()=.$_" ]|$)/
-  @octal_number ~r/^([-+]?[0-7]+)B([0-7]?)([-+*\/,()=.$_" ]|$)/
+  @decimal_number ~r/^(\d+)(D)([-+*\/,()=.$_" ]|$)/
+  # @decimal_number ~r/^([-+]?\d+)(D)([-+*\/,()=.$_" ]|$)/
+  @octal_number ~r/^([0-7]+)B([0-7]?)([-+*\/,()=.$_" ]|$)/
+  # @octal_number ~r/^([-+]?[0-7]+)B([0-7]?)([-+*\/,()=.$_" ]|$)/
   @symbol ~r/^[A-Z0-9:]+/
   @string_6 ~r/^'([^']{0,4})'/
   @string_long ~r/^'([^']{5,})'/
@@ -56,7 +56,7 @@ defmodule A940.Tokenizer do
           {:spaces, " ", hd(white_space)}
 
         octal_number != nil ->
-          octal_number |> dbg
+          # octal_number |> dbg
           number_text = hd(octal_number)
 
           number_text =
@@ -73,7 +73,7 @@ defmodule A940.Tokenizer do
           {:number, decode_octal(octal_number), number_text}
 
         decimal_number != nil ->
-          decimal_number |> dbg
+          # decimal_number |> dbg
           {:number, decode_decimal(decimal_number), hd(decimal_number)}
 
         symbol != nil ->

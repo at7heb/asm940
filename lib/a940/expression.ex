@@ -10,6 +10,8 @@ defmodule A940.Expression do
             current_location: 0,
             current_relocation: 0
 
+  @debug_line 2650
+
   @doc """
   From the NARP manual.
   <primary> :: = <symbol>|<constant>|[<expression›]
@@ -66,9 +68,9 @@ defmodule A940.Expression do
   end
 
   def evaluate(%A940.State{} = state) do
-    # if state.line_number == 265 do
-    #   state.address_tokens_list |> dbg
-    # end
+    if state.line_number == @debug_line do
+      state.address_tokens_list |> dbg
+    end
 
     {current_location, current_relocation} = A940.State.current_location(state)
 
@@ -101,7 +103,7 @@ defmodule A940.Expression do
 
   def ev_expression(%__MODULE__{tokens: [first | _rest]} = evstate) do
     {first, evstate.tokens, evstate.operator_stack, evstate.value_stack}
-    |> dbg
+    # |> dbg
 
     cond do
       first == {:delimiter, "="} -> throw(:literal_expression)
@@ -121,7 +123,6 @@ defmodule A940.Expression do
 
   def ev_basic_expression(%__MODULE__{} = evstate) do
     {evstate.tokens, evstate.operator_stack, evstate.value_stack}
-    |> dbg
 
     ev_primary(evstate) |> op_and_primary()
   end
@@ -158,7 +159,7 @@ defmodule A940.Expression do
       hd(evstate.tokens) == {:delimiter, "U@"} ->
         push_or_evaluate(rest(evstate), "U@") |> ev_basic_expression()
 
-      hd(evstate.tokens) == {:delimiter, "<"} ->
+      hd(evstate.tokens) == {:special, "<"} ->
         push_or_evaluate(rest(evstate), "<") |> ev_basic_expression()
 
       hd(evstate.tokens) == {:delimiter, "<="} ->
@@ -173,7 +174,7 @@ defmodule A940.Expression do
       hd(evstate.tokens) == {:delimiter, ">="} ->
         push_or_evaluate(rest(evstate), ">=") |> ev_basic_expression()
 
-      hd(evstate.tokens) == {:delimiter, ">"} ->
+      hd(evstate.tokens) == {:special, ">"} ->
         push_or_evaluate(rest(evstate), ">") |> ev_basic_expression()
 
       # ond of the mysteries of life - why is & special?
@@ -205,11 +206,12 @@ defmodule A940.Expression do
 
   def ev_primary(%__MODULE__{tokens: [first | _rest]} = evstate) do
     {evstate.tokens, evstate.operator_stack, evstate.value_stack}
-    |> dbg
+    # |> dbg
 
     {tag, value} =
       first
-      |> dbg
+
+    # |> dbg
 
     cond do
       tag == :number ->

@@ -28,6 +28,8 @@ defmodule A940.If do
             elsf_count: 0,
             else_count: 0
 
+  @debug_line 2650
+
   def f_if(%State{} = state, :first_call) do
     cond do
       state.label_tokens != [] ->
@@ -42,6 +44,10 @@ defmodule A940.If do
   end
 
   def f_if(%State{} = state, :second_call) do
+    if state.line_number == @debug_line do
+      state.address_tokens_list |> dbg
+    end
+
     {value, relocation} = Expression.evaluate(state)
 
     {assembling, new_if} =
@@ -122,7 +128,7 @@ defmodule A940.If do
   end
 
   def elsf(%State{} = state, :second_call) do
-    {value, relocation} = Expression.evaluate(state) |> dbg
+    {value, relocation} = Expression.evaluate(state)
     [current_if | _rest_of_ifs] = state.if_stack
 
     {assembling, new_if} =

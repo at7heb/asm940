@@ -4,6 +4,8 @@ defmodule A940.Pass1 do
   @address_terminators [{:spaces, " "}, {:eol, ""}]
   @addresses_terminators [{:delimiter, ","}, {:spaces, " "}, {:eol, ""}]
 
+  @debug_line 2651
+
   def run(%A940.State{} = state) do
     infinite_enumerable = Stream.cycle([:a, :b])
 
@@ -14,9 +16,17 @@ defmodule A940.Pass1 do
         case Tokens.next() do
           {:ok, line_number, tokens_list} ->
             {:cont,
-             assemble_statement(
-               A940.Macro.expand_dummy(state, tokens_list),
-               update_state_for_next_statement(current_state, line_number)
+             (
+               expanded = A940.Macro.expand_dummy(state, tokens_list)
+
+               if state.line_number == @debug_line do
+                 {expanded.label_tokens, expanded.op_tokens, expanded.address_tokens_list} |> dbg
+               end
+
+               assemble_statement(
+                 A940.Macro.expand_dummy(state, tokens_list),
+                 update_state_for_next_statement(current_state, line_number)
+               )
              )}
 
           {:error, "no more tokens"} ->
@@ -27,11 +37,8 @@ defmodule A940.Pass1 do
   end
 
   def assemble_statement([eol: ""], %A940.State{} = state),
-    do:
-      (
-        :blank_line |> dbg
-        state
-      )
+    # :blank_line |> dbg
+    do: state
 
   def assemble_statement([{:comment, _} | _], %A940.State{} = state),
     do: state
@@ -46,13 +53,19 @@ defmodule A940.Pass1 do
     tokens =
       A940.Macro.expand_macro_tokens(tokens, state)
 
+    if state.line_number == @debug_line do
+      tokens |> dbg
+    end
+
     {label_tokens, _terminator, tokens} = get_address(tokens, state, @address_terminators)
-    state = %{state | label_tokens: Enum.reverse(label_tokens)}
+    # state = %{state | label_tokens: Enum.reverse(label_tokens)}
+    state = %{state | label_tokens: label_tokens}
 
     if not state.flags.done do
       # will return     {remaining, list-of-list-of-tokens}
       {opcode_tokens, _terminator, tokens} = get_address(tokens, state, @address_terminators)
-      state = %{state | opcode_tokens: Enum.reverse(opcode_tokens)}
+      # state = %{state | opcode_tokens: Enum.reverse(opcode_tokens)}
+      state = %{state | opcode_tokens: opcode_tokens}
       # {"processing opcode", state.line_number} |> dbg
       if not state.assembling and not is_actionable_conditional(state.opcode_tokens) do
         IO.puts("Not assembling line #{state.line_number} -------------------------------")
@@ -73,11 +86,23 @@ defmodule A940.Pass1 do
           else
             {_, tokens} = get_tokens_list(tokens, state)
 
+            if state.line_number == @debug_line do
+              tokens |> dbg()
+            end
+
             {tokens, _terminator, _remaining_tokens} =
               get_address(tokens, state, @addresses_terminators)
 
+            if state.line_number == @debug_line do
+              tokens |> dbg()
+            end
+
             tokens
           end
+
+        # if state.line_number == @debug_line do
+        #   address_tokens_list |> dbg()
+        # end
 
         state = %{state | address_tokens_list: address_tokens_list}
 
@@ -159,19 +184,26 @@ defmodule A940.Pass1 do
   end
 
   def get_address1([first | rest] = _tokens, %State{} = state, address, terminator) do
-    cond do
-      first in terminator ->
-        {Enum.reverse(address), first, rest}
+    rv =
+      cond do
+        first in terminator ->
+          {address, first, rest}
 
-      first == {:delimiter, "("} ->
-        {balanced, remaining} = A940.Address.get_balanced_tokens(rest)
-        # put back parentheses (backwards since this will be reversed)
-        balanced = [{:delimiter, ")"}, balanced, {:delimiter, "("}] |> List.flatten()
-        get_address1(remaining, state, [balanced | address], terminator)
+        first == {:delimiter, "("} ->
+          {balanced, remaining} = A940.Address.get_balanced_tokens(rest)
+          # put back parentheses (backwards since this will be reversed)
+          balanced = [{:delimiter, "("}, balanced, {:delimiter, ")"}] |> List.flatten()
+          get_address1(remaining, state, [balanced | address], terminator)
 
-      true ->
-        get_address1(rest, state, [first | address], terminator)
+        true ->
+          get_address1(rest, state, [first | address], terminator)
+      end
+
+    if state.line_number == @debug_line do
+      rv |> dbg
     end
+
+    rv
   end
 
   def strip_outer_parens([first | rest] = address) when is_list(address) do
