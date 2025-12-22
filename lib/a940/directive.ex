@@ -101,8 +101,10 @@ defmodule A940.Directive do
     end
   end
 
-  def dec(%State{} = _state, _),
-    do: raise("DEC operative is not implemented")
+  def dec(%State{} = state, _) do
+    new_flags = %{state.flags | default_base: 10}
+    %{state | flags: new_flags}
+  end
 
   def delsym(%State{} = state, _) do
     %{state | output_symbols: false}
@@ -373,8 +375,10 @@ defmodule A940.Directive do
     end)
   end
 
-  def oct(%State{} = _state, _),
-    do: raise("OCT operative is not implemented")
+  def oct(%State{} = state, _) do
+    new_flags = %{state.flags | default_base: 8}
+    %{state | flags: new_flags}
+  end
 
   def zro(%State{} = state, :first_call) do
     state

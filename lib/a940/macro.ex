@@ -11,7 +11,7 @@ defmodule A940.Macro do
             generated_index: 0,
             level: 0
 
-  @debug_line 2651
+  @debug_line nil
 
   def macro(%State{} = state, :first_call), do: state
 
@@ -116,16 +116,29 @@ defmodule A940.Macro do
         _ -> %{mcro | actual_arguments: remove_grouping_parens(state.address_tokens_list)}
       end
 
+    if state.line_number == @debug_line do
+      {state.address_tokens_list, remove_grouping_parens(state.address_tokens_list)}
+    end
+
     new_stack = [state.current_macro | state.macro_stack]
 
     %{state | current_macro: macro_state, macro_stack: new_stack}
+  end
+
+  def remove_grouping_parens([[tokens_list]]) when is_list(tokens_list) do
+    remove_grouping_parens([tokens_list])
   end
 
   def remove_grouping_parens(tokens_list) when is_list(tokens_list) do
     Enum.map(tokens_list, &remove_grouping_parens_one_field(&1))
   end
 
+  def remove_grouping_parens_one_field([field_list]) when is_list(field_list) do
+    remove_grouping_parens_one_field(field_list)
+  end
+
   def remove_grouping_parens_one_field(field_list) when is_list(field_list) do
+    # field_list |> dbg
     first_token = Enum.at(field_list, 0)
     last_token = Enum.at(field_list, -1)
 
@@ -134,7 +147,8 @@ defmodule A940.Macro do
     else
       field_list
     end
-    |> dbg
+
+    # |> dbg
   end
 
   def expand_dummy(%State{current_macro: nil} = _state, tokens_list) when is_list(tokens_list),
@@ -152,7 +166,7 @@ defmodule A940.Macro do
 
       # there is a dummy name, so in the dummy name must be expanded throught the statement
       _ ->
-        nil |> dbg
+        nil
     end
   end
 

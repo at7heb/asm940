@@ -12,7 +12,7 @@ defmodule A940.Rpt do
             first_time: false,
             iteration_symbol: ""
 
-  @debug_line 2651
+  @debug_line nil
 
   def rpt(%State{} = state, :first_call) do
     state
@@ -23,8 +23,8 @@ defmodule A940.Rpt do
     first_address = state.address_tokens_list |> List.flatten()
 
     if state.line_number == @debug_line do
-      state.address_tokens_list |> dbg
-      first_address |> dbg
+      state.address_tokens_list
+      first_address
     end
 
     rpt_state =
@@ -39,7 +39,6 @@ defmodule A940.Rpt do
           {maximum_count, 0} = Expression.evaluate(state, first_address)
           %__MODULE__{counter: 1, maximum: maximum_count}
       end
-      |> dbg
 
     if rpt_state.counter > rpt_state.maximum do
       raise "Illegal RPT statement at line #{state.line_number} - MUST repeat at least once"
@@ -150,12 +149,12 @@ defmodule A940.Rpt do
         rest_of_specification = Enum.slice(tokens, 3..-1//1)
 
         {initial_expression, _delimiter, final_part} =
-          Pass1.get_address(rest_of_specification, state, [{:delimiter, ","}]) |> dbg
+          Pass1.get_address(rest_of_specification, state, [{:delimiter, ","}])
 
         {i_value, 0} = Expression.evaluate(state, initial_expression)
 
         {next_expression, terminator, final_part} =
-          Pass1.get_address(final_part, state, [{:delimiter, ","}, {:delimiter, ")"}]) |> dbg
+          Pass1.get_address(final_part, state, [{:delimiter, ","}, {:delimiter, ")"}])
 
         {incr_value, f_value} =
           case terminator do

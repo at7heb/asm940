@@ -4,7 +4,7 @@ defmodule A940.Pass1 do
   @address_terminators [{:spaces, " "}, {:eol, ""}]
   @addresses_terminators [{:delimiter, ","}, {:spaces, " "}, {:eol, ""}]
 
-  @debug_line 2651
+  @debug_line nil
 
   def run(%A940.State{} = state) do
     infinite_enumerable = Stream.cycle([:a, :b])
@@ -50,30 +50,37 @@ defmodule A940.Pass1 do
     do: state
 
   def assemble_statement(tokens, %A940.State{} = state) do
-    tokens =
-      A940.Macro.expand_macro_tokens(tokens, state)
+    {_label_part, opcode, _address_part} = quick_parse_statement(tokens)
 
-    if state.line_number == @debug_line do
-      tokens |> dbg
-    end
+    if not state.assembling and not is_actionable_conditional(opcode) do
+      IO.puts(
+        "Not assembling line #{state.line_number}: #{Map.get(state.lines, state.line_number)} -------------------------------"
+      )
 
-    {label_tokens, _terminator, tokens} = get_address(tokens, state, @address_terminators)
-    # state = %{state | label_tokens: Enum.reverse(label_tokens)}
-    state = %{state | label_tokens: label_tokens}
+      state
+    else
+      IO.puts(
+        "    Assembling line #{state.line_number}: #{Map.get(state.lines, state.line_number)} -------------------------------"
+      )
 
-    if not state.flags.done do
-      # will return     {remaining, list-of-list-of-tokens}
-      {opcode_tokens, _terminator, tokens} = get_address(tokens, state, @address_terminators)
-      # state = %{state | opcode_tokens: Enum.reverse(opcode_tokens)}
-      state = %{state | opcode_tokens: opcode_tokens}
-      # {"processing opcode", state.line_number} |> dbg
-      if not state.assembling and not is_actionable_conditional(state.opcode_tokens) do
-        IO.puts("Not assembling line #{state.line_number} -------------------------------")
-        state
-      else
-        IO.puts(
-          "    Assembling line #{state.line_number}: #{Map.get(state.lines, state.line_number)} -------------------------------"
-        )
+      tokens =
+        A940.Macro.expand_macro_tokens(tokens, state)
+
+      if state.line_number == @debug_line do
+        tokens |> dbg
+      end
+
+      {label_tokens, _terminator, tokens} = get_address(tokens, state, @address_terminators)
+      # it might be tempting to compare label_tokens with _label_part from the quick_parse/1,
+      # but that would not work if the label part changed due to macro expansion or rpt
+      state = %{state | label_tokens: label_tokens}
+
+      if not state.flags.done do
+        # will return     {remaining, list-of-list-of-tokens}
+        {opcode_tokens, _terminator, tokens} = get_address(tokens, state, @address_terminators)
+        # state = %{state | opcode_tokens: Enum.reverse(opcode_tokens)}
+        state = %{state | opcode_tokens: opcode_tokens}
+        # {"processing opcode", state.line_number} |> dbg
 
         state = Op.process_opcode(state)
         # state.operation |> dbg
@@ -107,9 +114,9 @@ defmodule A940.Pass1 do
         state = %{state | address_tokens_list: address_tokens_list}
 
         Op.process_opcode_again(state)
+      else
+        state
       end
-    else
-      state
     end
   end
 
@@ -206,6 +213,8 @@ defmodule A940.Pass1 do
     rv
   end
 
+  def strip_outer_parens([] = _address), do: []
+
   def strip_outer_parens([first | rest] = address) when is_list(address) do
     cond do
       first != {:delimiter, "("} -> address
@@ -239,6 +248,72 @@ defmodule A940.Pass1 do
       length(label_tokens) == 1 -> false
       length(label_tokens) == 2 -> true
       true -> false
+    end
+  end
+
+  def quick_parse_statement([]), do: {[], [], []}
+
+  def quick_parse_statement(tokens) when is_list(tokens) do
+    cond do
+      match?({:comment, _}, hd(tokens)) ->
+        {[], [], []}
+
+      match?([{:spaces, _}, {:comment, _}], Enum.slice(tokens, 0, 2)) ->
+        {[], [], []}
+
+      match?({:spaces, _}, hd(tokens)) ->
+        quick_parse_statements_opcode(tl(tokens), [], [])
+
+      true ->
+        quick_parse_statements_label(tl(tokens), [hd(tokens)])
+    end
+  end
+
+  def quick_parse_statements_label(tokens, label_tokens) do
+    cond do
+      match?({:comment, _}, hd(tokens)) ->
+        quick_parse_statements_opcode(tl(tokens), [], label_tokens)
+
+      match?({:spaces, _}, hd(tokens)) ->
+        quick_parse_statements_opcode(tl(tokens), [], label_tokens)
+
+      match?({:eol, _}, hd(tokens)) ->
+        {label_tokens, [], []}
+
+      true ->
+        quick_parse_statements_label(tl(tokens), label_tokens ++ [hd(tokens)])
+    end
+  end
+
+  def quick_parse_statements_opcode(tokens, opcode_tokens, label_tokens) do
+    cond do
+      match?({:spaces, _}, hd(tokens)) ->
+        quick_parse_statements_address(tl(tokens), [], opcode_tokens, label_tokens)
+
+      match?({:eol, _}, hd(tokens)) ->
+        {label_tokens, opcode_tokens, []}
+
+      match?({:comment, _}, hd(tokens)) ->
+        {label_tokens, opcode_tokens, []}
+
+      true ->
+        quick_parse_statements_opcode(tl(tokens), opcode_tokens ++ [hd(tokens)], label_tokens)
+    end
+  end
+
+  def quick_parse_statements_address(tokens, address_tokens, opcode_tokens, label_tokens) do
+    cond do
+      match?({:comment, _}, hd(tokens)) or match?({:spaces, _}, hd(tokens)) or
+          match?({:eol, _}, hd(tokens)) ->
+        {label_tokens, opcode_tokens, address_tokens}
+
+      true ->
+        quick_parse_statements_address(
+          tl(tokens),
+          address_tokens ++ [hd(tokens)],
+          opcode_tokens,
+          label_tokens
+        )
     end
   end
 

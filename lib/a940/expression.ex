@@ -10,7 +10,7 @@ defmodule A940.Expression do
             current_location: 0,
             current_relocation: 0
 
-  @debug_line 2651
+  @debug_line nil
 
   @doc """
   From the NARP manual.
