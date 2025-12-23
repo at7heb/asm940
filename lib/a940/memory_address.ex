@@ -58,7 +58,7 @@ defmodule A940.MemoryAddress do
     do: Listing.fmt_int(loc, @address_width, 8, "0") <> "A"
 
   def format_for_listing(%__MODULE__{relocation: 1, location: loc}),
-    do: Listing.fmt_int(loc, @address_width, 8, "0") <> "R"
+    do: Listing.fmt_int(loc, @address_width, 8, "0") <> " "
 
   def address(%__MODULE__{} = address) do
     %{address | label: [], opcode: [], address: [], comments: [], line_number: 0}

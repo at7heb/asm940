@@ -46,8 +46,12 @@ defmodule A940.MemoryValue do
   def format_for_listing(%__MODULE__{} = memory_value) do
     [
       Listing.fmt_int(memory_value.value, 8, 8, "0"),
-      "-R",
-      Integer.to_string(memory_value.relocation_value, 16)
+      " "
+      # case memory_value.relocation_value do
+      #   0 -> "A "
+      #   1 -> "  "
+      #   _ -> ["-R", Integer.to_string(memory_value.relocation_value, 16)]
+      # end
     ]
   end
 end
