@@ -53,7 +53,7 @@ defmodule A940.Op do
     |> Map.put("FRGTOP", new(0, :special_address, 0, &A940.Directive.frgtop/2, false))
     |> Map.put("GLOBAL", new(0, :special_address, 0, &A940.Directive.not_implemented/2, false))
     |> Map.put("IF", new(0, :special_address, 0, &A940.If.f_if/2, false))
-    |> Map.put("LIST", new(0, :special_address, 0, &A940.Directive.ignored/2, false))
+    |> Map.put("LIST", new(0, :special_address, 0, &A940.Directive.list/2, false))
     |> Map.put("NOLIST", new(0, :special_address, 0, &A940.Directive.ignored/2, false))
     |> Map.put("LOCAL", new(0, :special_address, 0, &A940.Directive.not_implemented/2, false))
     |> Map.put("MACRO", new(0, :special_address, 0, &A940.Macro.macro/2, false))

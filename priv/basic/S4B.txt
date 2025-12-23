@@ -2804,5 +2804,6 @@ MKST     LDA     0,2       GET BEG POINTER.
 $LLL4    BSS     0         START OF LITERALS.
 
        NOLIST  EXT,GO
+       LIST    S4B
 
        END

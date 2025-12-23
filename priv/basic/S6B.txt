@@ -3682,5 +3682,6 @@ VECT9    TV1     TEMFIL    WORDS CHANGED                     HEB,4.3
 $LLL6    BSS     0
 
        NOLIST  EXT,GO
+       LIST    S6B
 
        END

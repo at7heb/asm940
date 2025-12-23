@@ -1,10 +1,12 @@
 defmodule A940.MemoryValue do
   import Bitwise
+  alias A940.Listing
 
   defstruct value: 0,
             # list of tokens or empty; most of the time
             address_expression: [],
-            relocation_value: 0
+            relocation_value: 0,
+            dummy: false
 
   def new(value, relocation)
       when is_integer(value) and is_integer(relocation) and value >= 0 and value <= 0o77777777,
@@ -27,6 +29,8 @@ defmodule A940.MemoryValue do
         address_expression: address_expression_tokens
       }
 
+  def new_dummy(), do: %__MODULE__{dummy: true}
+
   def merge_value(%__MODULE__{value: content} = memory_value, merge_value),
     do: %{memory_value | value: content ||| merge_value}
 
@@ -37,5 +41,13 @@ defmodule A940.MemoryValue do
       "<value: #{Integer.to_string(memory_value.value, 8)}, address_expression: " <>
         "#{inspect(memory_value.address_expression)}, relocation_value: #{memory_value.relocation_value}>"
     end
+  end
+
+  def format_for_listing(%__MODULE__{} = memory_value) do
+    [
+      Listing.fmt_int(memory_value.value, 8, 8, "0"),
+      "-R",
+      Integer.to_string(memory_value.relocation_value, 16)
+    ]
   end
 end

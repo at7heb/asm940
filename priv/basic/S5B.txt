@@ -723,6 +723,7 @@ ERRU ASC 'UNDEFINED MATRIX/'
 $LLL5    BSS     0
 
        NOLIST  EXT,GO
+       LIST    S5B
 
  END
  

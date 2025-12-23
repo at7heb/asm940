@@ -1305,5 +1305,6 @@ $LCUC    ZRO     ALPCNT    CONVERT CHAR IN A REG TO UPP      [HB 22.06.71]
 $LLL2    BSS     0         START OF LITERALS.
 
        NOLIST  EXT,GO
+       LIST    S2B
 
        END

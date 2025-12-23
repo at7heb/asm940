@@ -13,6 +13,7 @@ defmodule A940.State do
             current_macro: nil,
             macro_stack: [],
             flags: %A940.Flags{},
+            listing_name: "",
             # this keeps counting up with each instruction or data word(s)
             # default relocation value of 1 (implicit, not stored)
             location_relative: 0,
@@ -140,6 +141,12 @@ defmodule A940.State do
       state.flags.relocating -> MemoryAddress.new_relocatable(state.location_relative + offset)
       true -> MemoryAddress.new_absolute(state.location_absolute + offset)
     end
+    |> MemoryAddress.set_source(
+      state.line_number,
+      state.label_tokens,
+      state.opcode_tokens,
+      state.address_tokens_list
+    )
   end
 
   def increment_current_location(%__MODULE__{} = state, increment \\ 1) do

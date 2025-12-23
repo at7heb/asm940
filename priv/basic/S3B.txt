@@ -882,6 +882,7 @@ $SICFIN  EQU     34000             TBG 8/13/68
 $LLL3    BSS     0         START OF LITERALS.
 
        NOLIST  EXT,GO
+       LIST    S3B
 
 
        END

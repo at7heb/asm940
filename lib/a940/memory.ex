@@ -1,5 +1,6 @@
 defmodule A940.Memory do
   import Bitwise
+  # alias A940.Address
   alias A940.{MemoryAddress, MemoryValue}
   @mem_ets :memory_locations
 
@@ -9,13 +10,19 @@ defmodule A940.Memory do
       _ -> :ets.delete(@mem_ets)
     end
 
-    :ets.new(@mem_ets, [:set, :protected, :named_table])
+    :ets.new(@mem_ets, [:ordered_set, :protected, :named_table])
   end
 
   def set_memory(%MemoryAddress{} = address, %MemoryValue{} = value) do
-    case is_empty?(address) do
-      true -> :ets.insert(@mem_ets, {address, value})
-      _ -> raise "Memory location #{inspect(address)} written twice"
+    case is_empty?(MemoryAddress.address(address)) do
+      true ->
+        :ets.insert(
+          @mem_ets,
+          {MemoryAddress.address(address), value, MemoryAddress.source(address)}
+        )
+
+      _ ->
+        raise "Memory location #{inspect(address)} written twice"
     end
   end
 
@@ -45,10 +52,10 @@ defmodule A940.Memory do
         )
 
       true ->
-        [{_, %MemoryValue{} = content}] = lookup
+        [{_, %MemoryValue{} = content, source}] = lookup
         masked_data = data &&& mask
         new_content_value = content.value ||| masked_data
-        :ets.insert(@mem_ets, {location, %{content | value: new_content_value}})
+        :ets.insert(@mem_ets, {location, %{content | value: new_content_value}, source})
     end
   end
 
@@ -60,7 +67,7 @@ defmodule A940.Memory do
         nil
 
       true ->
-        [{_, %MemoryValue{} = value}] = lookup
+        [{_, %MemoryValue{} = value, _}] = lookup
         value
     end
   end
@@ -71,7 +78,7 @@ defmodule A940.Memory do
 
   def all_addresses() do
     # Pattern: {key, :_} matches any tuple with 2 elements, returns only key
-    :ets.match(@mem_ets, {:"$1", :_})
+    :ets.match(@mem_ets, {:"$1", :_, :_})
     |> List.flatten()
     |> Enum.sort(fn a, b -> a.relocation <= b.relocation and a.location <= b.location end)
   end
@@ -83,5 +90,13 @@ defmodule A940.Memory do
       lookup == [] -> true
       true -> false
     end
+  end
+
+  def first() do
+    :ets.first_lookup(@mem_ets)
+  end
+
+  def next(%MemoryAddress{} = current) do
+    :ets.next_lookup(@mem_ets, MemoryAddress.address(current))
   end
 end

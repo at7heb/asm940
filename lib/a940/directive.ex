@@ -262,6 +262,15 @@ defmodule A940.Directive do
     state
   end
 
+  def list(%State{} = state, _) do
+    if match?([[{:symbol, _symbol}]], state.address_tokens_list) do
+      [[{:symbol, symbol}]] = state.address_tokens_list
+      %{state | listing_name: symbol}
+    else
+      state
+    end
+  end
+
   def opdef(%State{} = state, :first_call) do
     state
   end
@@ -333,7 +342,13 @@ defmodule A940.Directive do
     instruction_location = 0o100 + (div(op_word, 0o100000) &&& 0o77)
 
     Memory.set_memory(
-      MemoryAddress.new_absolute(instruction_location),
+      MemoryAddress.new_absolute(instruction_location)
+      |> MemoryAddress.set_source(
+        state.line_number,
+        state.label_tokens,
+        state.opcode_tokens,
+        state.address_tokens_list
+      ),
       MemoryValue.new(instruction, relocation)
     )
 

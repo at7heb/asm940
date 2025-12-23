@@ -682,5 +682,6 @@ BRS21A XAB
 $EUPAGE EQU    *+2             KLUDGE TO SKIP OVER BRS21 LITERALS
 
        NOLIST EXT,GO
+       LIST   S1B
 
        END
