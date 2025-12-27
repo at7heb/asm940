@@ -39,14 +39,16 @@ defmodule A940.MemoryAddress do
         line_number,
         label_tokens,
         opcode_tokens,
-        address_tokens_list
+        address_tokens_list,
+        comment \\ []
       ) do
     %{
       address
       | label: label_tokens,
         opcode: opcode_tokens,
         address: address_tokens_list,
-        line_number: line_number
+        line_number: line_number,
+        comments: comment
     }
   end
 
