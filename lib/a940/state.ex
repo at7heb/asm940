@@ -146,7 +146,8 @@ defmodule A940.State do
       state.line_number,
       state.label_tokens,
       state.opcode_tokens,
-      state.address_tokens_list
+      state.address_tokens_list,
+      state.comment
     )
   end
 

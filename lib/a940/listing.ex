@@ -48,18 +48,20 @@ defmodule A940.Listing do
         address: address,
         comments: comment
       }) do
-    [
-      fmt_string(concat_token_values(label), 10),
-      "  ",
-      fmt_string(concat_token_values(opcode), 10),
-      "  ",
-      if comment != [] do
-        fmt_string(concat_list_of_token_list_values(address), 20)
-      else
-        concat_list_of_token_list_values(address)
-      end,
-      concat_token_values(comment)
-    ]
+    if label == [] and opcode == [] and address == [[]] do
+      [concat_token_values(comment)]
+    else
+      [
+        fmt_string(concat_token_values(label), 8),
+        fmt_string(concat_token_values(opcode), 8),
+        if comment != [] do
+          fmt_string(concat_list_of_token_list_values(address), 20)
+        else
+          concat_list_of_token_list_values(address)
+        end,
+        concat_token_values(comment)
+      ]
+    end
   end
 
   def concat_token_values(tokens) when is_list(tokens) do
