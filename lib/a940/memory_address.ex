@@ -20,8 +20,11 @@ defmodule A940.MemoryAddress do
     %__MODULE__{location: location, relocation: 0}
   end
 
+  def new(location, true), do: new(location, 1)
+  def new(location, false), do: new(location, 0)
+
   def new(location, relocation)
-      when is_integer(location) and location >= 0 and location <= 16383 do
+      when is_integer(location) and location >= 0 and location <= 16383 and is_integer(relocation) do
     %__MODULE__{location: location, relocation: relocation}
   end
 

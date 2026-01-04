@@ -31,6 +31,8 @@ defmodule A940.MemoryValue do
 
   def new_dummy(), do: %__MODULE__{dummy: true}
 
+  # def new_dummy(), do: %__MODULE__{value: 0, relocation_value: 0, address_expression: [], dummy: true}
+
   def merge_value(%__MODULE__{value: content} = memory_value, merge_value),
     do: %{memory_value | value: content ||| merge_value}
 
@@ -42,6 +44,9 @@ defmodule A940.MemoryValue do
         "#{inspect(memory_value.address_expression)}, relocation_value: #{memory_value.relocation_value}>"
     end
   end
+
+  # Empty value field for comments
+  def format_for_listing(%__MODULE__{dummy: true}), do: ["        "]
 
   def format_for_listing(%__MODULE__{} = memory_value) do
     [

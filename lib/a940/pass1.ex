@@ -1,4 +1,5 @@
 defmodule A940.Pass1 do
+  alias A940.Listing
   alias A940.{State, Op, Tokens}
 
   @address_terminators [{:spaces, " "}, {:eol, ""}]
@@ -40,14 +41,39 @@ defmodule A940.Pass1 do
     # :blank_line |> dbg
     do: state
 
-  def assemble_statement([{:comment, _} | _], %A940.State{} = state),
-    do: state
+  # def assemble_statement([{:comment, _} | _], %A940.State{} = state),
+  #   do: state
+
+  def assemble_statement([{:comment, comment_text} | _rest], %A940.State{} = state) do
+    # Handle full-line comment: create a dummy memory address for listing (no actual memory allocation)
+    dummy_address =
+      A940.MemoryAddress.new_dummy(state.location_relative, state.flags.relocating)
+      |> A940.MemoryAddress.set_source(
+        state.line_number,
+        # no label
+        [],
+        # no opcode
+        [],
+        # no address
+        [[]],
+        # store as comment tokens
+        [{:comment, "*" <> comment_text}]
+      )
+
+    # Insert dummy into memory (it won't allocate real space but will appear in listing)
+    A940.Memory.set_memory(dummy_address, A940.MemoryValue.new_dummy())
+    state
+  end
 
   # must recognize [spaces: " ", delimiter: "*", spaces: " ", symbol: "ABC", eol: ""]
 
-  def assemble_statement([{:spaces, _}, {:delimiter, "*"} | _], %A940.State{} = state),
+  def assemble_statement([{:spaces, _}, {:delimiter, "*"} | rest], %A940.State{} = state) do
     # :indented_comment3 |> dbg
-    do: state
+    assemble_statement(
+      [{:comment, Listing.concat_list_of_token_list_values(rest)}, {:eol, ""}],
+      state
+    )
+  end
 
   def assemble_statement(tokens, %A940.State{} = state) do
     {_label_part, opcode, _address_part} = quick_parse_statement(tokens)
@@ -85,13 +111,13 @@ defmodule A940.Pass1 do
         state = Op.process_opcode(state)
         # state.operation |> dbg
 
-        address_tokens_list =
+        {address_tokens_list, comment_tokens_list} =
           if state.operation.address_class == :no_address do
-            [[]]
+            {[[]], tokens}
             # tokens |> dbg
             # will return     {remaining, list-of-list-of-tokens}
           else
-            {_, tokens} = get_tokens_list(tokens, state)
+            {remaining, tokens} = get_tokens_list(tokens, state)
 
             if state.line_number == @debug_line do
               tokens |> dbg()
@@ -104,14 +130,14 @@ defmodule A940.Pass1 do
               tokens |> dbg()
             end
 
-            tokens
+            {tokens, remaining}
           end
 
         # if state.line_number == @debug_line do
         #   address_tokens_list |> dbg()
         # end
 
-        state = %{state | address_tokens_list: address_tokens_list}
+        state = %{state | address_tokens_list: address_tokens_list, comment: comment_tokens_list}
 
         Op.process_opcode_again(state)
       else

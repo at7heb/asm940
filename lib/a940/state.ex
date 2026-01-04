@@ -7,7 +7,7 @@ defmodule A940.State do
             label_tokens: [],
             opcode_tokens: [],
             address_tokens_list: [[]],
-            comments: [],
+            comment: [],
             operation: %A940.Op{},
             symbols: %{},
             macros: %{},
