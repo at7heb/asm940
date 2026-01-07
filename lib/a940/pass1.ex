@@ -48,17 +48,29 @@ defmodule A940.Pass1 do
     # Handle full-line comment: create a dummy memory address for listing (no actual memory allocation)
     dummy_address =
       A940.MemoryAddress.new_dummy(state.location_relative, state.flags.relocating)
-      |> A940.MemoryAddress.set_source(
-        state.line_number,
-        # no label
-        [],
-        # no opcode
-        [],
-        # no address
-        [[]],
-        # store as comment tokens
-        [{:comment, "*" <> comment_text}]
-      )
+
+    # |> A940.MemoryAddress.set_source(
+    #   state.line_number,
+    #   # no label
+    #   [],
+    #   # no opcode
+    #   [],
+    #   # no address
+    #   [[]],
+    #   # store as comment tokens
+    #   [{:comment, "*" <> comment_text}]
+    # )
+    A940.Listing.add_line_listing(
+      state.line_number,
+      # no label
+      [],
+      # no opcode
+      [],
+      # no address
+      [[]],
+      # store as comment tokens
+      [{:comment, "*" <> comment_text}]
+    )
 
     # Insert dummy into memory (it won't allocate real space but will appear in listing)
     A940.Memory.set_memory(dummy_address, A940.MemoryValue.new_dummy())

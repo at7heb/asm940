@@ -31,6 +31,7 @@ defmodule A940.Conductor do
     A940.Op.new_opcode_table()
     A940.Memory.new_memory_image_table()
     A940.Tokens.create_table()
+    A940.Listing.create_listing_table()
     process(A940.State.new(lines))
   end
 

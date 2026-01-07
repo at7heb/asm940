@@ -24,10 +24,9 @@ defmodule A940.Directive do
         raise("BSS on line #{state.line_number} has illegal relocation=#{relocation}")
 
       true ->
-        save_label_tokens = state.label_tokens
-        state = %{state | label_tokens: []}
-        state = Enum.reduce(1..val, state, fn _n, state -> zro(state, :second_call) end)
-        A940.Op.handle_label_symbol_definition(%{state | label_tokens: save_label_tokens})
+        State.increment_current_location(state, val - 1)
+        |> zro(:second_call)
+        |> A940.Op.handle_label_symbol_definition()
     end
   end
 
@@ -55,7 +54,9 @@ defmodule A940.Directive do
         raise("BSS on line #{state.line_number} has illegal relocation=#{relocation}")
 
       true ->
-        Enum.reduce(1..val, state, fn _n, state -> zro(state, :second_call) end)
+        # Enum.reduce(1..val, state, fn _n, state -> zro(state, :second_call) end)
+        zro(state, :second_call)
+        |> State.increment_current_location(val - 1)
     end
   end
 
