@@ -142,13 +142,14 @@ defmodule A940.State do
       state.flags.relocating -> MemoryAddress.new_relocatable(state.location_relative + offset)
       true -> MemoryAddress.new_absolute(state.location_absolute + offset)
     end
-    |> MemoryAddress.set_source(
-      state.line_number,
-      state.label_tokens,
-      state.opcode_tokens,
-      state.address_tokens_list,
-      state.comment
-    )
+
+    # |> MemoryAddress.set_source(
+    #   state.line_number,
+    #   state.label_tokens,
+    #   state.opcode_tokens,
+    #   state.address_tokens_list,
+    #   state.comment
+    # )
   end
 
   def increment_current_location(%__MODULE__{} = state, increment \\ 1) do

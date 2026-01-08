@@ -1,5 +1,5 @@
 defmodule A940.Op do
-  alias A940.{State, Address, Memory, MemoryValue}
+  alias A940.{State, Address, Listing, Memory, MemoryValue}
 
   import Bitwise
 
@@ -54,7 +54,7 @@ defmodule A940.Op do
     |> Map.put("GLOBAL", new(0, :special_address, 0, &A940.Directive.not_implemented/2, false))
     |> Map.put("IF", new(0, :special_address, 0, &A940.If.f_if/2, false))
     |> Map.put("LIST", new(0, :special_address, 0, &A940.Directive.list/2, false))
-    |> Map.put("NOLIST", new(0, :special_address, 0, &A940.Directive.ignored/2, false))
+    |> Map.put("NOLIST", new(0, :special_address, 0, &A940.Directive.nol/2, false))
     |> Map.put("LOCAL", new(0, :special_address, 0, &A940.Directive.not_implemented/2, false))
     |> Map.put("MACRO", new(0, :special_address, 0, &A940.Macro.macro/2, false))
     |> Map.put("NARG", new(0, :special_address, 0, &A940.Macro.narg/2, false))
@@ -249,6 +249,8 @@ defmodule A940.Op do
       MemoryValue.new(word, relocation)
     )
 
+    Listing.add_line_listing(state)
+
     State.increment_current_location(state)
   end
 
@@ -262,6 +264,8 @@ defmodule A940.Op do
       State.get_current_location(state),
       MemoryValue.new(word, address_expression_tokens)
     )
+
+    Listing.add_line_listing(state)
 
     State.increment_current_location(state)
   end
@@ -338,6 +342,8 @@ defmodule A940.Op do
 
         update_opcode_memory(state, address, tag, mask, indirect)
     end
+
+    # Listing.add_line_listing(state)
   end
 
   def handle_label_symbol_definition(%State{} = state) do

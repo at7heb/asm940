@@ -37,7 +37,7 @@ defmodule A940.MemoryAddress do
 
   def new_dummy({location, relocation}), do: new_dummy(location, relocation)
 
-  def set_source(
+  def xxset_source(
         %__MODULE__{} = address,
         line_number,
         label_tokens,

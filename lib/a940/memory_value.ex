@@ -59,4 +59,6 @@ defmodule A940.MemoryValue do
       # end
     ]
   end
+
+  def format_for_listing(unk), do: ["unk: ", inspect(unk)]
 end

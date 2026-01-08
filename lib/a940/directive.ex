@@ -2,9 +2,10 @@ defmodule A940.Directive do
   import Bitwise
 
   alias A940.MemoryAddress
-  alias A940.{State, Memory, MemoryValue, Expression}
+  alias A940.{State, Memory, MemoryValue, Expression, Listing}
 
   @magic_end_of_program 0o31_062_144
+  @dummy_location {0, 0}
 
   def bes(%State{} = state, :first_call),
     do: state
@@ -48,6 +49,8 @@ defmodule A940.Directive do
         raise("BSS on line #{state.line_number} of #{val} words is illegal")
 
       val == 0 ->
+        Listing.add_line_listing(state, MemoryAddress.new_dummy(0, 0))
+
         state
 
       relocation != 0 ->
@@ -72,6 +75,7 @@ defmodule A940.Directive do
 
     # State.addzz_memory(state, word, 0)
     Memory.set_memory(State.get_current_location(state), MemoryValue.new(word, 0))
+    Listing.add_line_listing(state)
     State.increment_current_location(state)
   end
 
@@ -94,6 +98,7 @@ defmodule A940.Directive do
 
       is_integer(val) and is_integer(relocation) ->
         Memory.set_memory(State.get_current_location(state), MemoryValue.new(val, relocation))
+        Listing.add_line_listing(state)
 
         State.increment_current_location(state)
 
@@ -102,12 +107,19 @@ defmodule A940.Directive do
     end
   end
 
-  def dec(%State{} = state, _) do
+  def dec(%State{} = state, which) do
     new_flags = %{state.flags | default_base: 10}
+
+    if which == :second_call,
+      do: Listing.add_line_listing(state, MemoryAddress.new_dummy(@dummy_location))
+
     %{state | flags: new_flags}
   end
 
-  def delsym(%State{} = state, _) do
+  def delsym(%State{} = state, which) do
+    if which == :second_call,
+      do: Listing.add_line_listing(state, MemoryAddress.new_dummy(@dummy_location))
+
     %{state | output_symbols: false}
   end
 
@@ -121,6 +133,8 @@ defmodule A940.Directive do
 
     # okay to re-define a symbol
     # state, symbol_name, value, ?, relocation, exported)
+    Listing.add_line_listing(state, MemoryAddress.new_dummy(@dummy_location))
+
     State.redefine_symbol_value(
       state,
       A940.Pass1.label_name(state.label_tokens),
@@ -136,44 +150,50 @@ defmodule A940.Directive do
   def ext(%State{} = state, :second_call) do
     label = A940.Pass1.label_name(state.label_tokens)
 
-    cond do
-      label == nil ->
-        raise "EXT must have label line in statement \##{state.line_number}"
+    state =
+      cond do
+        label == nil ->
+          raise "EXT must have label line in statement \##{state.line_number}"
 
-      state.address_tokens_list != [[]] ->
-        # value to be assigned; just make it exportable
-        {val, relocation} = A940.Address.eval(state)
+        state.address_tokens_list != [[]] ->
+          # value to be assigned; just make it exportable
+          {val, relocation} = A940.Address.eval(state)
 
-        State.redefine_symbol_value(
-          state,
-          label,
-          val,
-          relocation,
-          true
-        )
+          State.redefine_symbol_value(
+            state,
+            label,
+            val,
+            relocation,
+            true
+          )
 
-      Map.get(state.symbols, label) != nil ->
-        # symbol previously defined, make exported
-        address = Map.get(state.symbols, label)
+        Map.get(state.symbols, label) != nil ->
+          # symbol previously defined, make exported
+          address = Map.get(state.symbols, label)
 
-        State.redefine_symbol_value(
-          state,
-          label,
-          address.value,
-          address.relocation,
-          true
-        )
+          State.redefine_symbol_value(
+            state,
+            label,
+            address.value,
+            address.relocation,
+            true
+          )
 
-      true ->
-        # undefined - an error.
-        raise "Symbol #{label} in EXT directive line #{state.line_number} must be previously defined"
-    end
+        true ->
+          # undefined - an error.
+          raise "Symbol #{label} in EXT directive line #{state.line_number} must be previously defined"
+      end
+
+    Listing.add_line_listing(state, MemoryAddress.new_dummy(@dummy_location))
+    state
   end
 
   def f2lib(%State{} = state, :first_call), do: state
 
   def f2lib(%State{} = state, :second_call) do
     # add program separator word, 0o31_062_144 after each end statement
+    Listing.add_line_listing(state, MemoryAddress.new_dummy(@dummy_location))
+
     %{state | f2lib?: true}
   end
 
@@ -186,6 +206,8 @@ defmodule A940.Directive do
     :ets.new(:macros, [:set, :protected, :named_table])
     Enum.map(Map.to_list(state.macros), &:ets.insert(:macros, &1))
     :ets.insert(:macros, {:keys, Map.keys(state.macros)})
+    Listing.add_line_listing(state, MemoryAddress.new_dummy(@dummy_location))
+
     state
   end
 
@@ -194,6 +216,7 @@ defmodule A940.Directive do
   def frgt(%State{} = state, :second_call) do
     # state.address_tokens_list |> dbg
     # state.symbols |> dbg
+    Listing.add_line_listing(state, MemoryAddress.new_dummy(@dummy_location))
 
     Enum.reduce(state.address_tokens_list, state, fn [token], state ->
       # token |> dbg
@@ -218,6 +241,8 @@ defmodule A940.Directive do
   end
 
   def f_end(%State{} = state, :second_call) do
+    Listing.add_line_listing(state, MemoryAddress.new_dummy(@dummy_location))
+
     cond do
       state.f2lib? ->
         # State.addzz_memory(state, @magic_end_of_program, 0)
@@ -260,16 +285,25 @@ defmodule A940.Directive do
   def ident(%State{} = state, :second_call) do
     # nothing to do
     # IO.puts("ident 2nd-----------------------------------------------------------")
+    Listing.add_line_listing(state, MemoryAddress.new_dummy(@dummy_location))
+
     state
   end
 
-  def list(%State{} = state, _) do
+  def list(%State{} = state, which) do
+    if which == :second_call, do: Listing.add_line_listing(state, MemoryAddress.new_dummy(0, 0))
+
     if match?([[{:symbol, _symbol}]], state.address_tokens_list) do
       [[{:symbol, symbol}]] = state.address_tokens_list
       %{state | listing_name: symbol}
     else
       state
     end
+  end
+
+  def nol(%State{} = state, which) do
+    if which == :second_call, do: Listing.add_line_listing(state, MemoryAddress.new_dummy(0, 0))
+    state
   end
 
   def opdef(%State{} = state, :first_call) do
@@ -298,6 +332,8 @@ defmodule A940.Directive do
     A940.Op.update_opcode_table(op_code, op_value)
     # {"opdef", op_code, Integer.to_string(op_word, 8)} |> dbg()
     # {"opdef1", op_value} |> dbg
+    Listing.add_line_listing(state, MemoryAddress.new_dummy(0, 0))
+
     state
   end
 
@@ -340,24 +376,29 @@ defmodule A940.Directive do
     # Now put " BRU *" into the POP transfer table
     {location, relocation} = State.current_location(state)
     instruction = 0o0100000 + location
-    instruction_location = 0o100 + (div(op_word, 0o100000) &&& 0o77)
+
+    instruction_address =
+      (0o100 + (div(op_word, 0o100000) &&& 0o77))
+      |> MemoryAddress.new_absolute()
 
     Memory.set_memory(
-      MemoryAddress.new_absolute(instruction_location)
-      |> MemoryAddress.set_source(
-        state.line_number,
-        state.label_tokens,
-        state.opcode_tokens,
-        state.address_tokens_list
-      ),
+      # |> MemoryAddress.set_source(
+      #   state.line_number,
+      #   state.label_tokens,
+      #   state.opcode_tokens,
+      #   state.address_tokens_list
+      # ),
+      instruction_address,
       MemoryValue.new(instruction, relocation)
     )
 
+    A940.Listing.add_line_listing(state, instruction_address)
     state
   end
 
   def not_implemented(%State{} = state, _) do
     {:symbol, directive} = hd(state.opcode_tokens)
+    Listing.add_line_listing(state)
     raise "Illegal directive #{directive} on line #{state.line_number}"
   end
 
@@ -419,6 +460,8 @@ defmodule A940.Directive do
       State.get_current_location(state),
       MemoryValue.new(0, 0)
     )
+
+    Listing.add_line_listing(state)
 
     State.increment_current_location(state)
   end

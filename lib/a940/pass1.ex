@@ -37,9 +37,23 @@ defmodule A940.Pass1 do
     )
   end
 
-  def assemble_statement([eol: ""], %A940.State{} = state),
-    # :blank_line |> dbg
-    do: state
+  # :blank_line |> dbg
+  def assemble_statement([eol: ""], %A940.State{} = state) do
+    A940.Listing.add_line_listing(
+      state.line_number,
+      # no label
+      [],
+      # no opcode
+      [],
+      # no address
+      [[]],
+      # store as comment tokens
+      [{:comment, ""}],
+      A940.MemoryAddress.new_dummy(state.location_relative, state.flags.relocating)
+    )
+
+    state
+  end
 
   # def assemble_statement([{:comment, _} | _], %A940.State{} = state),
   #   do: state
@@ -69,7 +83,8 @@ defmodule A940.Pass1 do
       # no address
       [[]],
       # store as comment tokens
-      [{:comment, "*" <> comment_text}]
+      [{:comment, "*" <> comment_text}],
+      dummy_address
     )
 
     # Insert dummy into memory (it won't allocate real space but will appear in listing)
@@ -91,15 +106,15 @@ defmodule A940.Pass1 do
     {_label_part, opcode, _address_part} = quick_parse_statement(tokens)
 
     if not state.assembling and not is_actionable_conditional(opcode) do
-      IO.puts(
-        "Not assembling line #{state.line_number}: #{Map.get(state.lines, state.line_number)} -------------------------------"
-      )
+      # IO.puts(
+      #   "Not assembling line #{state.line_number}: #{Map.get(state.lines, state.line_number)} -------------------------------"
+      # )
 
       state
     else
-      IO.puts(
-        "    Assembling line #{state.line_number}: #{Map.get(state.lines, state.line_number)} -------------------------------"
-      )
+      # IO.puts(
+      #   "    Assembling line #{state.line_number}: #{Map.get(state.lines, state.line_number)} -------------------------------"
+      # )
 
       tokens =
         A940.Macro.expand_macro_tokens(tokens, state)

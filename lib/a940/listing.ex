@@ -4,13 +4,13 @@ defmodule A940.Listing do
   defstruct source_line_number: 0, text_list: [], location: MemoryAddress.new_dummy(0, 0)
 
   @listing_ets :listing_lines
-  @content_space String.duplicate(" ", 40)
-  def new(line_number, line_text_list, %MemoryAddress{} = address)
+  @content_space " "
+  def new(line_number, line_text_list, %MemoryAddress{} = location)
       when is_integer(line_number) and is_list(line_text_list),
       do: %__MODULE__{
         source_line_number: line_number,
         text_list: line_text_list,
-        location: address
+        location: location
       }
 
   def create_listing_table() do
@@ -21,17 +21,29 @@ defmodule A940.Listing do
 
     :ets.new(@listing_ets, [:ordered_set, :protected, :named_table])
 
-    :ets.insert(@listing_ets, {:current_line, 1})
+    :ets.insert(@listing_ets, {:current_line, 0})
   end
 
   def add_line_listing(%State{} = state) do
-    make_listing_line(state)
-    |> stash_listing_line()
+    location = State.current_location(state)
+    add_line_listing(state, location)
   end
 
-  def stash_listing_line(listing_line_list) do
-    listing_line_number = get_listing_line_number()
-    :ets.insert(@listing_ets, {listing_line_number, listing_line_list})
+  def add_line_listing(%State{} = state, %MemoryAddress{} = location) do
+    add_line_listing(
+      state.line_number,
+      state.label_tokens,
+      state.opcode_tokens,
+      state.address_tokens_list,
+      state.comment,
+      location
+    )
+
+    state
+  end
+
+  def add_line_listing(%State{} = state, {_loc, _rel} = location) do
+    add_line_listing(state, MemoryAddress.new(location))
   end
 
   def add_line_listing(
@@ -43,28 +55,39 @@ defmodule A940.Listing do
         # no address
         [[]],
         # store as comment tokens
-        [{:comment, comment_text}]
+        [{:comment, comment_text}],
+        %MemoryAddress{} = location
       ) do
-    [fmt_int(source_line_number, 6, 10, " "), @content_space, comment_text]
+    new(
+      source_line_number,
+      [@content_space, comment_text],
+      location
+    )
     |> stash_listing_line()
   end
 
   def add_line_listing(
         source_line_number,
-        # no label
         label,
-        # no opcode
         opcode,
-        # no address
         addresses,
-        # store as comment tokens
-        comment_text
+        comment_text,
+        %MemoryAddress{} = location
       ) do
-    [
-      fmt_int(source_line_number, 6, 10, " "),
-      format_for_listing(label, opcode, addresses, comment_text)
-    ]
+    new(
+      source_line_number,
+      [
+        " ",
+        format_for_listing(label, opcode, addresses, comment_text)
+      ],
+      location
+    )
     |> stash_listing_line()
+  end
+
+  def stash_listing_line(%__MODULE__{} = line) do
+    listing_line_number = get_listing_line_number()
+    :ets.insert(@listing_ets, {listing_line_number, line})
   end
 
   def make_listing(%State{listing_name: ""} = state), do: state
@@ -80,7 +103,27 @@ defmodule A940.Listing do
       nil
     else
       [{^line_number, listing_line}] = listing_line
-      IO.puts(listing_line)
+
+      location = listing_line.location
+
+      memory_value_part =
+        if location.dummy do
+          "         "
+        else
+          MemoryValue.format_for_listing(Memory.get_memory(listing_line.location))
+        end
+
+      IO.puts([
+        # fmt_int(line_number, 5, 10, " "),
+        fmt_int(listing_line.source_line_number, 5, 10, " "),
+        " ",
+        MemoryAddress.format_for_listing(listing_line.location),
+        " ",
+        memory_value_part,
+        " ",
+        listing_line.text_list
+      ])
+
       list_next(listing_name, line_number + 1)
     end
   end
@@ -127,24 +170,27 @@ defmodule A940.Listing do
       )
     ]
 
-    {address, [line_number, " ", address_part, memory_value_part, code_part]}
+    {address,
+     [" L: ", line_number, " A: ", address_part, " M: ", memory_value_part, " C: ", code_part]}
   end
 
-  def make_listing_line({address, [{address_again, value, code}]} = _location) do
+  def make_listing_line({address, [{_address_again, value, code}]} = _location) do
     line_number = fmt_int(code.line_number, 5, 10, " ")
     address_part = MemoryAddress.format_for_listing(address)
 
-    extra_address_part =
-      if address != address_again do
-        " MH " <> MemoryAddress.format_for_listing(address_again)
-      else
-        ""
-      end
+    # extra_address_part =
+    #   if address != address_again do
+    #     " MH " <> MemoryAddress.format_for_listing(address_again)
+    #   else
+    #     ""
+    #   end
 
     memory_value_part = ["  ", MemoryValue.format_for_listing(value)]
 
     code_part = ["  ", format_for_listing(code)]
-    {address, [line_number, " ", address_part, extra_address_part, memory_value_part, code_part]}
+
+    {address,
+     [" L: ", line_number, " A: ", address_part, " M: ", memory_value_part, " C: ", code_part]}
   end
 
   def format_for_listing(%MemoryAddress{
@@ -160,10 +206,10 @@ defmodule A940.Listing do
       [concat_token_values(comment)]
     else
       [
-        fmt_string(concat_token_values(label), 8),
+        fmt_string(concat_token_values(label), 9),
         fmt_string(concat_token_values(opcode), 8),
         if comment != [] do
-          fmt_string(concat_list_of_token_list_values(address), 20)
+          [fmt_string(concat_list_of_token_list_values(address), 15), " "]
         else
           concat_list_of_token_list_values(address)
         end,
@@ -197,8 +243,6 @@ defmodule A940.Listing do
   end
 
   def get_listing_line_number() do
-    [current_line: line] = :ets.lookup(@listing_ets, :current_line)
-    :ets.insert(@listing_ets, {:current_line, line + 1})
-    line
+    :ets.update_counter(@listing_ets, :current_line, 1)
   end
 end
