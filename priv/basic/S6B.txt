@@ -754,7 +754,7 @@ EO11     CAX
 OPJUMP   BRU     CHGMOD    HB,73/08/01
        BRU     CERR10          !
          BRU     CHGMOD        "                             HB 72/01/06
-         LDA     =POWP        ↑ (UP-ARROW)                   HEB,4.3
+         LDA     =POWP        ^ (UP-ARROW)                   HEB,4.3
        BRU     CERR10          $
        BRU     CERR10          %
          BRU     CHKAPD    AMPERSAND  [CONCATENATE STRINGS.] HEB,4.31

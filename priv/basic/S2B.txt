@@ -296,14 +296,14 @@ AHEAD0   SKG     =90       HB 72-02-24
        BRS     14
        BRS     11
        BRU     PP1
-BACKAR   LDA     =77B      TYPE OUT AN ←.  4.02 
+BACKAR   LDA     =77B      TYPE OUT AN _.  4.02 
          CIO     ONE
 BACKCR   LDA     CRCH      AT BEGINNING OF LINE.             HB 72/02/03
          CIO     ONE
        LDA     LFCH
        CIO     ONE
          BRU     PP1       RESTART WHOLE MESS.               HB 72/02/03
-UPAR     LDA     =76B      CHANGED TO PRINT ↑.  4.02
+UPAR     LDA     =76B      CHANGED TO PRINT ^.  4.02
        CIO     ONE              RJS-68/2/23
          SKR     XCOUNT    LABEL REMOVED                     HB 72/02/03
        BRU     *+2
@@ -382,7 +382,7 @@ SWAP0    SKG     =40B      5.10
        BRU     *+3
        LDA     =11B            )
        BRU     0,2
-       SKE     =76B            ↑
+       SKE     =76B            ^
        BRU     *+3
        LDA     THREE              &
        BRU     0,2
