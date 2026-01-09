@@ -441,7 +441,7 @@ defmodule A940.Expression do
           true -> {Bitwise.bxor(value_1, 0o77777777), 0}
         end
 
-      true ->
+      _ ->
         raise "unknown unary operator #{op}"
     end
   end

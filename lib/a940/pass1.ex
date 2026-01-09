@@ -271,7 +271,7 @@ defmodule A940.Pass1 do
   def strip_outer_parens([first | rest] = address) when is_list(address) do
     cond do
       first != {:delimiter, "("} -> address
-      Enum.slice(rest, -1..-1//1) == {:delimiter, ")"} -> Enum.slice(rest, 0..-2//1)
+      Enum.slice(rest, -1..-1//1) == [{:delimiter, ")"}] -> Enum.slice(rest, 0..-2//1)
       true -> raise("expression that should be balanced isn't #{inspect(address)}")
     end
   end

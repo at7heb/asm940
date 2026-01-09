@@ -14,16 +14,16 @@ defmodule A940.Memory do
   end
 
   def set_memory(%MemoryAddress{} = address, %MemoryValue{} = value) do
-    case is_empty?(MemoryAddress.address(address)) or true do
-      true ->
-        :ets.insert(
-          @mem_ets,
-          {MemoryAddress.address(address), value, MemoryAddress.source(address)}
-        )
+    # case is_empty?(MemoryAddress.address(address)) do
+    #   true ->
+    :ets.insert(
+      @mem_ets,
+      {MemoryAddress.address(address), value, MemoryAddress.source(address)}
+    )
 
-      _ ->
-        raise "Memory location #{inspect(address)} written twice"
-    end
+    #   _ ->
+    #     raise "Memory location #{inspect(address)} written twice"
+    # end
   end
 
   # Memory.merge_address(location, address_field, state.flags.address_length)
