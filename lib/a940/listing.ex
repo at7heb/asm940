@@ -92,8 +92,9 @@ defmodule A940.Listing do
 
   def make_listing(%State{listing_name: ""} = state), do: state
 
-  def make_listing(%State{listing_name: listing_name} = _state) do
+  def make_listing(%State{listing_name: listing_name} = state) do
     list_next(listing_name, 1)
+    state
   end
 
   def list_next(listing_name, line_number) do
