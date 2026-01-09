@@ -1,5 +1,5 @@
 defmodule A940.Macro do
-  alias A940.{State, Tokens, Tokenizer}
+  alias A940.{Listing, MemoryAddress, State, Tokens, Tokenizer}
 
   defstruct macro_name: "",
             starting_line_number: 0,
@@ -30,6 +30,7 @@ defmodule A940.Macro do
       |> process_dummy_tokens(state, dummy_tokens)
 
     A940.Op.update_opcode_table(mcro)
+    Listing.add_line_listing(state, MemoryAddress.new_dummy(0, 0))
 
     %{state | macros: Map.put(state.macros, mcro.macro_name, mcro)}
   end
@@ -47,6 +48,7 @@ defmodule A940.Macro do
     # pop the tokens range and the current macro state
     A940.Tokens.pop_range()
     # state.macro_stack |> dbg
+    Listing.add_line_listing(state, MemoryAddress.new_dummy(0, 0))
     [current | stack] = state.macro_stack
     %{state | current_macro: current, macro_stack: stack, macros: new_macro_map}
   end
@@ -62,6 +64,8 @@ defmodule A940.Macro do
   def narg(%State{} = state, :second_call) do
     val = length(state.current_macro.actual_arguments)
     # state, symbol_name, value, ?, relocation, exported
+    Listing.add_line_listing(state, MemoryAddress.new_dummy(0, 0))
+
     State.redefine_symbol_value(
       state,
       A940.Pass1.label_name(state.label_tokens),
@@ -86,6 +90,7 @@ defmodule A940.Macro do
 
     val = String.length(process_concatenation(hd(state.address_tokens_list), state))
     # {:nchr, val} |> dbg
+    Listing.add_line_listing(state, MemoryAddress.new_dummy(0, 0))
 
     State.redefine_symbol_value(
       state,
@@ -121,6 +126,7 @@ defmodule A940.Macro do
     end
 
     new_stack = [state.current_macro | state.macro_stack]
+    Listing.add_line_listing(state, MemoryAddress.new_dummy(0, 0))
 
     %{state | current_macro: macro_state, macro_stack: new_stack}
   end
