@@ -219,7 +219,8 @@ defmodule A940.Listing do
   end
 
   def concat_token_values(tokens) when is_list(tokens) do
-    Enum.map(tokens, fn {_type, value} -> string_value(value) end)
+    List.flatten(tokens)
+    |> Enum.map(fn {_type, value} -> string_value(value) end)
     |> Enum.join("")
   end
 
