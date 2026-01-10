@@ -109,7 +109,7 @@ defmodule A940.Expression do
       first == {:delimiter, "="} -> throw(:literal_expression)
       first == {:delimiter, "+"} -> push_or_evaluate(rest(evstate), "U+") |> ev_basic_expression()
       first == {:delimiter, "-"} -> push_or_evaluate(rest(evstate), "U-") |> ev_basic_expression()
-      first == {:delimiter, "@"} -> push_or_evaluate(rest(evstate), "U@") |> ev_basic_expression()
+      first == {:special, "@"} -> push_or_evaluate(rest(evstate), "U@") |> ev_basic_expression()
       true -> ev_basic_expression(evstate)
     end
   end

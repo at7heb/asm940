@@ -6,7 +6,7 @@ defmodule A940.Tokenizer do
   @number ~r/^\d+/
   @decimal_number ~r/^(\d+)(D)([-+*\/,()=.$_" ]|$)/
   # @decimal_number ~r/^([-+]?\d+)(D)([-+*\/,()=.$_" ]|$)/
-  @octal_number ~r/^([0-7]+)B([0-7]?)([-+*\/,()=.$_" ]|$)/
+  @octal_number ~r/^([0-7]+)B([0-7]?)([-+*\/,()=.$_"! ]|$)/
   # @octal_number ~r/^([-+]?[0-7]+)B([0-7]?)([-+*\/,()=.$_" ]|$)/
   @symbol ~r/^[A-Z0-9:]+/
   @string_6 ~r/^'([^']{0,4})'/

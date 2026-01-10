@@ -92,6 +92,7 @@ defmodule A940.Directive do
     cond do
       qualifier == :external_expression or qualifier == :literal_expression ->
         Memory.set_memory(State.get_current_location(state), MemoryValue.new(tokens_list))
+        Listing.add_line_listing(state)
         State.increment_current_location(state)
 
       # State.addzz_memory(state, 0, tokens_list)
@@ -105,6 +106,24 @@ defmodule A940.Directive do
       true ->
         raise "DATA on line #{state.line_number} - illegal operand"
     end
+  end
+
+  def literal_data(%State{} = state, {number, relocation} = literal_value)
+      when is_integer(number) and is_integer(relocation) do
+    location = State.get_current_location(state)
+    Memory.set_memory(location, MemoryValue.new(number, relocation))
+    Listing.add_line_listing(state, :literal, literal_value)
+    new_state = State.increment_current_location(state)
+    {new_state, location}
+  end
+
+  def literal_data(%State{} = state, {:external_expression, expression} = literal_value)
+      when is_list(expression) do
+    location = State.get_current_location(state)
+    Memory.set_memory(location, MemoryValue.new(0, 0))
+    Listing.add_line_listing(state, :literal, expression)
+    new_state = State.increment_current_location(state)
+    {new_state, location}
   end
 
   def dec(%State{} = state, which) do

@@ -46,6 +46,33 @@ defmodule A940.Listing do
     add_line_listing(state, MemoryAddress.new(location))
   end
 
+  def add_line_listing(%State{} = state, :literal, {value, 0}) do
+    new(
+      state.line_number,
+      ["LITERAL ", fmt_int(value, 8, 8, " "), " ABSOLUTE"],
+      MemoryAddress.new(State.current_location(state))
+    )
+    |> stash_listing_line()
+  end
+
+  def add_line_listing(%State{} = state, :literal, {value, 1}) do
+    new(
+      state.line_number,
+      ["LITERAL ", fmt_int(value, 8, 8, " "), " RELOCATE"],
+      MemoryAddress.new(State.current_location(state))
+    )
+    |> stash_listing_line()
+  end
+
+  def add_line_listing(%State{} = state, :literal, expression) when is_list(expression) do
+    new(
+      state.line_number,
+      ["LITERAL ", concat_token_values(expression)],
+      MemoryAddress.new(State.current_location(state))
+    )
+    |> stash_listing_line()
+  end
+
   def add_line_listing(
         source_line_number,
         # no label
@@ -245,6 +272,6 @@ defmodule A940.Listing do
   end
 
   def get_listing_line_number() do
-    :ets.update_counter(@listing_ets, :current_line, 1)
+    :ets.update_counter(@listing_ets, :current_line, 1) |> dbg()
   end
 end
