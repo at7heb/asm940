@@ -86,8 +86,13 @@ defmodule A940.Directive do
     # TODO - make this handle " DATA 1,2,3"
     # {val, relocation} = Expression.evaluate(state)
     address = Expression.evaluate(state)
-    {val, relocation} = address
-    {qualifier, tokens_list} = address
+    # {val, relocation} = address
+    {qualifier, tokens_list} =
+      cond do
+        is_list(address) -> {hd(address), tl(address)}
+        is_tuple(address) -> {elem(address, 0), elem(address, 1)}
+        true -> raise "DATA on line #{state.line_number} - illegal operand #{inspect(address)}"
+      end
 
     cond do
       qualifier == :external_expression or qualifier == :literal_expression ->
@@ -97,14 +102,36 @@ defmodule A940.Directive do
 
       # State.addzz_memory(state, 0, tokens_list)
 
-      is_integer(val) and is_integer(relocation) ->
-        Memory.set_memory(State.get_current_location(state), MemoryValue.new(val, relocation))
+      match?([delimiter: "=", number: {_val, _relocation}], address) ->
+        address |> dbg
+        Memory.set_memory(State.get_current_location(state), MemoryValue.new(0, address))
+        Listing.add_line_listing(state)
+        State.increment_current_location(state)
+
+      match?({_value, _relocation}, tokens_list) ->
+        {value, relocation} = tokens_list
+
+        if not (is_integer(value) and is_integer(relocation)),
+          do: raise("DATA addres = #{inspect(address)}")
+
+        Memory.set_memory(State.get_current_location(state), MemoryValue.new(value, relocation))
+        Listing.add_line_listing(state)
+
+        State.increment_current_location(state)
+
+      match?({_value, _relocation}, address) ->
+        {value, relocation} = address
+
+        if not (is_integer(value) and is_integer(relocation)),
+          do: raise("DATA addres = #{inspect(address)}")
+
+        Memory.set_memory(State.get_current_location(state), MemoryValue.new(value, relocation))
         Listing.add_line_listing(state)
 
         State.increment_current_location(state)
 
       true ->
-        raise "DATA on line #{state.line_number} - illegal operand"
+        raise "DATA on line #{state.line_number} - illegal operand #{inspect(address)}"
     end
   end
 
@@ -117,7 +144,7 @@ defmodule A940.Directive do
     {new_state, location}
   end
 
-  def literal_data(%State{} = state, {:external_expression, expression} = literal_value)
+  def literal_data(%State{} = state, {:external_expression, expression} = _literal_value)
       when is_list(expression) do
     location = State.get_current_location(state)
     Memory.set_memory(location, MemoryValue.new(0, 0))

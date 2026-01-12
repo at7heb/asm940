@@ -29,6 +29,8 @@ defmodule A940.Resolve do
     IO.puts("#{length(memory)} memory entries")
     IO.puts("#{length(has_literals)} of memory have literal addresses")
 
+    has_literals |> dbg
+
     evaluated_addresses_and_literals =
       Enum.map(has_literals, &evaluate_a_literal(state, &1))
 
@@ -36,14 +38,13 @@ defmodule A940.Resolve do
       Enum.map(evaluated_addresses_and_literals, &elem(&1, 1))
       |> Enum.sort()
       |> Enum.uniq()
-      |> dbg
 
     {"unique literal values", uniq_literal_values} |> dbg
 
     {new_state, value_address_map} =
       Enum.reduce(uniq_literal_values, {state, %{}}, fn literal_value,
                                                         {temporary_state, va_map} ->
-        literal_value |> dbg
+        # literal_value |> dbg
 
         {new_state, %MemoryAddress{} = address} =
           A940.Directive.literal_data(temporary_state, literal_value)

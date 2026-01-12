@@ -62,7 +62,8 @@ defmodule A940.Expression do
       evaluate(evstate)
     catch
       :external_symbol -> {:external_expression, tokens}
-      :literal_expression -> {:literal_expression, tokens}
+      # :literal_expression -> {:literal_expression, tokens}
+      :literal_expression -> maybe_evaluate_literal(evstate, tokens)
       x -> {:unk, x, tokens} |> dbg
     end
   end
@@ -88,6 +89,17 @@ defmodule A940.Expression do
 
     new_state = ev_expression(evstate)
     {hd(new_state.value_stack) &&& 0o77777777, hd(new_state.relocation_stack)}
+  end
+
+  def maybe_evaluate_literal(%__MODULE__{} = evstate, tokens) when is_list(tokens) do
+    try do
+      {"maybe_evaluate_literal", tokens} |> dbg
+      value = %{evstate | tokens: tl(tokens)} |> evaluate()
+      value |> dbg
+      [{:delimiter, "="}, {:number, value}]
+    catch
+      _ -> {:literal_expression, tokens}
+    end
   end
 
   def ev_expression(%__MODULE__{tokens: []} = evstate) do
@@ -188,7 +200,7 @@ defmodule A940.Expression do
       hd(evstate.tokens) == {:special, "%"} ->
         push_or_evaluate(rest(evstate), "%") |> ev_basic_expression()
 
-      hd(evstate.tokens) == {:delimiter, "]"} ->
+      hd(evstate.tokens) == {:special, "]"} or hd(evstate.tokens) == {:delimiter, "]"} ->
         push_or_evaluate(rest(evstate), "]") |> ev_basic_expression()
 
       true ->
@@ -223,7 +235,7 @@ defmodule A940.Expression do
       first == {:delimiter, "*"} ->
         push_current(rest(evstate))
 
-      first == {:delimiter, "["} ->
+      first == {:special, "["} ->
         evstate = push_operator(rest(evstate), "[") |> ev_expression()
         {evstate.tokens, evstate.operator_stack, evstate.value_stack}
         #  |> dbg
@@ -245,6 +257,12 @@ defmodule A940.Expression do
   end
 
   def rest(%__MODULE__{tokens: [_first | rest]} = evstate), do: %{evstate | tokens: rest}
+
+  def push_number(%__MODULE__{} = evstate, {value, relocation}) do
+    value = value &&& 0o77777777
+    #  |> dbg
+    push(evstate, value, relocation)
+  end
 
   def push_number(%__MODULE__{} = evstate, value) when is_integer(value) do
     value = value &&& 0o77777777

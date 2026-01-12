@@ -327,23 +327,42 @@ defmodule A940.Op do
       end
 
     cond do
+      match?([delimiter: "=", number: {_addr, _relo}], address) ->
+        IO.puts("1 want to put #{inspect(address)} into instruction")
+        update_opcode_memory(state, address, tag, indirect)
+
+      is_tuple(address) and tuple_size(address) == 2 and is_number(elem(address, 0)) and
+          is_number(elem(address, 1)) ->
+        IO.puts("2 want to put #{inspect(address)} into instruction")
+
+        update_opcode_memory(
+          state,
+          address,
+          tag,
+          get_address_mask(state),
+          indirect
+        )
+
       elem(address, 0) == :external_expression or elem(address, 0) == :literal_expression ->
         {_, expression_tokens} = address
         update_opcode_memory(state, expression_tokens, tag, indirect)
 
       true ->
-        mask =
-          cond do
-            state.operation.address_length == 24 -> 0o77777777
-            state.operation.address_length == 14 -> 0o37777
-            state.operation.address_length == 9 -> 0o777
-            true -> 0
-          end
+        mask = get_address_mask(state)
 
         update_opcode_memory(state, address, tag, mask, indirect)
     end
 
     # Listing.add_line_listing(state)
+  end
+
+  def get_address_mask(state) do
+    cond do
+      state.operation.address_length == 24 -> 0o77777777
+      state.operation.address_length == 14 -> 0o37777
+      state.operation.address_length == 9 -> 0o777
+      true -> 0
+    end
   end
 
   def handle_label_symbol_definition(%State{} = state) do
