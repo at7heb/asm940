@@ -32,7 +32,7 @@ defmodule A940.Resolve do
     has_literals |> dbg
 
     evaluated_addresses_and_literals =
-      Enum.map(has_literals, &evaluate_a_literal(state, &1))
+      Enum.map(has_literals, &evaluate_a_literal(state, &1)) |> dbg
 
     uniq_literal_values =
       Enum.map(evaluated_addresses_and_literals, &elem(&1, 1))
@@ -54,7 +54,27 @@ defmodule A940.Resolve do
 
     # Enum.each()
     value_address_map |> dbg
+
+    # evaluated_addresses_and_literals tells where in the assembled code each literal value
+    # .  is used.
+    # value_address_map tells where the literal of the given value is stored in memory.
+    update_literal_references(state, evaluated_addresses_and_literals, value_address_map)
     new_state
+  end
+
+  def update_literal_references(
+        %State{} = _state,
+        evaluated_addresses_and_literals,
+        value_address_map
+      )
+      when is_list(evaluated_addresses_and_literals) and is_map(value_address_map) do
+    Enum.each(
+      evaluated_addresses_and_literals,
+      fn {%MemoryAddress{} = address_of_use, {_value, _relocation} = literal_value} ->
+        address_of_literal = Map.get(value_address_map, literal_value)
+        Memory.set_address(address_of_use, address_of_literal)
+      end
+    )
   end
 
   def evaluate_a_literal(

@@ -4,7 +4,7 @@ defmodule A940.Listing do
   defstruct source_line_number: 0, text_list: [], location: MemoryAddress.new_dummy(0, 0)
 
   @listing_ets :listing_lines
-  @content_space " "
+  @content_space "  "
   def new(line_number, line_text_list, %MemoryAddress{} = location)
       when is_integer(line_number) and is_list(line_text_list),
       do: %__MODULE__{
@@ -136,7 +136,7 @@ defmodule A940.Listing do
 
       memory_value_part =
         if location.dummy do
-          "         "
+          "          "
         else
           MemoryValue.format_for_listing(Memory.get_memory(listing_line.location))
         end
@@ -234,6 +234,7 @@ defmodule A940.Listing do
       [concat_token_values(comment)]
     else
       [
+        " ",
         fmt_string(concat_token_values(label), 9),
         fmt_string(concat_token_values(opcode), 8),
         if comment != [] do

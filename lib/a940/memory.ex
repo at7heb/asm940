@@ -33,6 +33,37 @@ defmodule A940.Memory do
     merge_memory(location, address, mask)
   end
 
+  def set_address(
+        %MemoryAddress{} = location,
+        %MemoryAddress{location: address_location, relocation: address_relocation} =
+          new_address_field
+      ) do
+    lookup = :ets.lookup(@mem_ets, location)
+
+    cond do
+      lookup == [] ->
+        raise(
+          "cannot set address of non-existent memory #{inspect(location)}, " <>
+            "new address = #{inspect(new_address_field)}"
+        )
+
+      true ->
+        [{_, %MemoryValue{dummy: false} = content, source}] = lookup
+        data_to_keep = content.value &&& 0o77740000
+        new_content_value = data_to_keep ||| (address_location &&& 0o37777)
+
+        new_content = %{
+          content
+          | value: new_content_value,
+            relocation_value: address_relocation,
+            mask: 0o77777777,
+            dummy: false
+        }
+
+        :ets.insert(@mem_ets, {location, new_content, source})
+    end
+  end
+
   # Memory.merge_tag(location, tag)
   def merge_tag(%MemoryAddress{} = location, tag) do
     word_tag = tag <<< 21
