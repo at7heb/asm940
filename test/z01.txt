@@ -12,11 +12,16 @@ E0 EQU L1-L0
 E1 EQU L0-L1
  DATA E1
 LBL LDB =E1
-* LDA =[*-L1]+6
-* DATA [*-L1]+5
-*
-* DATA *-L1+7
-* DATA [*-L1]+8
+ DATA L1-L0
+ DATA L0-L1
+ LDA =[*-L1]+6
+ DATA [*-L1]+5
+
+ DATA *-L1+7
+ LDX =*-L1+6
+ LDB =*+5-L1
+ DATA [*-L1]+8
+ DATA *-L1+7
 * EAX =L1
 * LDA =E1
 * LDB =L0-L1

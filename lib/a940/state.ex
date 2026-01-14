@@ -88,7 +88,14 @@ defmodule A940.State do
   #   redefine_symbol_value(state, symbol_name, value, relocation)
   # end
 
-  def redefine_symbol_value(%__MODULE__{} = state, symbol_name, value, relocation, exported?)
+  def redefine_symbol_value(
+        %__MODULE__{} = state,
+        symbol_name,
+        value,
+        relocation,
+        exported?,
+        mask \\ 0o37777
+      )
       when is_binary(symbol_name) do
     # {"Symbol---------------------- Set", Process.info(self(), :current_stacktrace)} |> dbg
     old_address_value = Map.get(state.symbols, symbol_name)
@@ -97,7 +104,7 @@ defmodule A940.State do
       cond do
         old_address_value == nil ->
           # "redefine_symbol_value first definition" |> dbg
-          Address.new(value, relocation, exported?)
+          Address.new(value, relocation, exported?, false, mask)
 
         true ->
           # "redefine_symbol_value subsequent definition" |> dbg
@@ -106,7 +113,8 @@ defmodule A940.State do
             value,
             relocation,
             old_address_value.exported? or exported?,
-            old_address_value.forgotten?
+            old_address_value.forgotten?,
+            mask
           )
       end
 

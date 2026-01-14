@@ -138,6 +138,7 @@ defmodule A940.Listing do
         if location.dummy do
           "          "
         else
+          # {listing_line.location, Memory.get_memory(listing_line.location)} |> dbg
           MemoryValue.format_for_listing(Memory.get_memory(listing_line.location))
         end
 

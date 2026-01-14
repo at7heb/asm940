@@ -96,7 +96,11 @@ defmodule A940.Directive do
 
     cond do
       qualifier == :external_expression or qualifier == :literal_expression ->
-        Memory.set_memory(State.get_current_location(state), MemoryValue.new(tokens_list))
+        Memory.set_memory(
+          State.get_current_location(state),
+          MemoryValue.new(tokens_list, 0o77777777)
+        )
+
         Listing.add_line_listing(state)
         State.increment_current_location(state)
 
@@ -114,7 +118,11 @@ defmodule A940.Directive do
         if not (is_integer(value) and is_integer(relocation)),
           do: raise("DATA addres = #{inspect(address)}")
 
-        Memory.set_memory(State.get_current_location(state), MemoryValue.new(value, relocation))
+        Memory.set_memory(
+          State.get_current_location(state),
+          MemoryValue.new(value, relocation, 0o77777777)
+        )
+
         Listing.add_line_listing(state)
 
         State.increment_current_location(state)
@@ -125,7 +133,11 @@ defmodule A940.Directive do
         if not (is_integer(value) and is_integer(relocation)),
           do: raise("DATA addres = #{inspect(address)}")
 
-        Memory.set_memory(State.get_current_location(state), MemoryValue.new(value, relocation))
+        Memory.set_memory(
+          State.get_current_location(state),
+          MemoryValue.new(value, relocation, 0o77777777)
+        )
+
         Listing.add_line_listing(state)
 
         State.increment_current_location(state)
@@ -138,7 +150,7 @@ defmodule A940.Directive do
   def literal_data(%State{} = state, {number, relocation} = literal_value)
       when is_integer(number) and is_integer(relocation) do
     location = State.get_current_location(state)
-    Memory.set_memory(location, MemoryValue.new(number, relocation))
+    Memory.set_memory(location, MemoryValue.new(number, relocation, 0o77777777))
     Listing.add_line_listing(state, :literal, literal_value)
     new_state = State.increment_current_location(state)
     {new_state, location}
@@ -186,7 +198,8 @@ defmodule A940.Directive do
       A940.Pass1.label_name(state.label_tokens),
       val,
       relocation,
-      A940.Pass1.label_global(state.label_tokens)
+      A940.Pass1.label_global(state.label_tokens),
+      0o77777777
     )
   end
 
