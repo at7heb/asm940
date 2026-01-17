@@ -91,6 +91,17 @@ defmodule A940.State do
   def redefine_symbol_value(
         %__MODULE__{} = state,
         symbol_name,
+        :external_expression,
+        relocation,
+        exported?,
+        mask \\ 0o37777
+      )
+      when is_binary(symbol_name) do
+  end
+
+  def redefine_symbol_value(
+        %__MODULE__{} = state,
+        symbol_name,
         value,
         relocation,
         exported?,

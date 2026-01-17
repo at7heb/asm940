@@ -121,6 +121,7 @@ defmodule A940.Listing do
 
   def make_listing(%State{listing_name: listing_name} = state) do
     list_next(listing_name, 1)
+    list_symbols(state)
     state
   end
 
@@ -275,5 +276,28 @@ defmodule A940.Listing do
 
   def get_listing_line_number() do
     :ets.update_counter(@listing_ets, :current_line, 1)
+  end
+
+  def list_symbols(%State{symbols: symbols} = state) do
+    symbol_names = Map.keys(symbols) |> Enum.sort()
+
+    Enum.each(symbol_names, fn name ->
+      symbol_value = Map.get(symbols, name)
+      value = symbol_value.value
+      relocation = symbol_value.relocation
+      relocation_code = Enum.at(~w/A R/, relocation)
+      value_code = fmt_int(value, 8, 8, " ")
+
+      expression_value =
+        if symbol_value.expression_tokens == [] do
+          ""
+        else
+          [" []", concat_list_of_token_list_values(symbol_value.expression_tokens), "]"]
+        end
+
+      IO.puts([fmt_string(name, 8), ": ", value_code, relocation_code, expression_value])
+    end)
+
+    state
   end
 end

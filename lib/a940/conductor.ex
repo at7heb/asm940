@@ -27,6 +27,13 @@ defmodule A940.Conductor do
 
   def runs(s), do: runcount(s, 70)
 
+  defp log_this do
+    stacktrace = Process.info(self(), :current_stacktrace) |> elem(1)
+    IO.puts("--- Current Stacktrace ---")
+    IO.puts(Exception.format_stacktrace(stacktrace))
+    IO.puts("--------------------------")
+  end
+
   defp process(lines) when is_list(lines) do
     A940.Op.new_opcode_table()
     A940.Memory.new_memory_image_table()

@@ -40,6 +40,8 @@ defmodule A940.Address do
     }
   end
 
+  def new(:external_expression, expression, )
+
   def new_expression(expression, exported \\ false) when is_list(expression),
     do: %__MODULE__{
       value: 0,
