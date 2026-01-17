@@ -1,4 +1,5 @@
 defmodule A940.Address do
+  alias A940.Conductor
   alias A940.State
 
   import Bitwise
@@ -40,7 +41,9 @@ defmodule A940.Address do
     }
   end
 
-  def new(:external_expression, expression, )
+  def new(:external_expression, expression, xx) do
+    Conductor.log_this()
+  end
 
   def new_expression(expression, exported \\ false) when is_list(expression),
     do: %__MODULE__{
