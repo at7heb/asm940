@@ -14,24 +14,29 @@ defmodule A940.Pass1 do
       infinite_enumerable,
       state,
       fn _a, current_state ->
-        case Tokens.next() do
-          {:ok, line_number, tokens_list} ->
-            {:cont,
-             (
-               expanded = A940.Macro.expand_dummy(state, tokens_list)
+        if current_state.end_of_assembly do
+          {:halt, current_state}
+        else
+          case Tokens.next() do
+            {:ok, line_number, tokens_list} ->
+              {:cont,
+               (
+                 expanded = A940.Macro.expand_dummy(state, tokens_list)
 
-               if state.line_number == @debug_line do
-                 {expanded.label_tokens, expanded.op_tokens, expanded.address_tokens_list} |> dbg
-               end
+                 if state.line_number == @debug_line do
+                   {expanded.label_tokens, expanded.op_tokens, expanded.address_tokens_list}
+                   |> dbg
+                 end
 
-               assemble_statement(
-                 A940.Macro.expand_dummy(state, tokens_list),
-                 update_state_for_next_statement(current_state, line_number)
-               )
-             )}
+                 assemble_statement(
+                   A940.Macro.expand_dummy(state, tokens_list),
+                   update_state_for_next_statement(current_state, line_number)
+                 )
+               )}
 
-          {:error, "no more tokens"} ->
-            {:halt, current_state}
+            {:error, "no more tokens"} ->
+              {:halt, current_state}
+          end
         end
       end
     )

@@ -27,7 +27,7 @@ defmodule A940.Conductor do
 
   def runs(s), do: runcount(s, 70)
 
-  defp log_this do
+  def log_this do
     stacktrace = Process.info(self(), :current_stacktrace) |> elem(1)
     IO.puts("--- Current Stacktrace ---")
     IO.puts(Exception.format_stacktrace(stacktrace))

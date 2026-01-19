@@ -1,8 +1,7 @@
 defmodule A940.State do
-  alias A940.{Address, MemoryAddress}
+  alias A940.{Address, MemoryAddress, Flags}
 
   defstruct lines: %{},
-            # tokens_list: [],
             used_tokens: [],
             label_tokens: [],
             opcode_tokens: [],
@@ -25,6 +24,7 @@ defmodule A940.State do
             output_symbols: true,
             f2lib?: false,
             assembling: true,
+            end_of_assembly: false,
             if_stack: [],
             rpt_state: %A940.Rpt{}
 
@@ -34,7 +34,8 @@ defmodule A940.State do
         {count + 1, Map.put(map, count, line)}
       end)
 
-    %__MODULE__{lines: line_map}
+    flags = Flags.default()
+    %__MODULE__{lines: line_map, flags: flags}
   end
 
   def update_symbol_table(%__MODULE__{} = state, symbol_name, exported? \\ false)
@@ -83,10 +84,29 @@ defmodule A940.State do
     %{state | symbols: new_symbols}
   end
 
+  def redefine_symbol_as_expression(
+        state,
+        label_name,
+        expression_tokens,
+        exported?
+      ) do
+    {label_name, expression_tokens, exported?} |> dbg
+    state
+  end
+
   # def redefine_symbol_value(%__MODULE__{} = state, symbol_name) do
   #   {value, relocation} = current_location(state)
   #   redefine_symbol_value(state, symbol_name, value, relocation)
   # end
+
+  def redefine_symbol_value(
+        state,
+        symbol_name,
+        qual,
+        relocation,
+        exported?,
+        mask \\ 0o37777
+      )
 
   def redefine_symbol_value(
         %__MODULE__{} = state,
@@ -94,9 +114,12 @@ defmodule A940.State do
         :external_expression,
         relocation,
         exported?,
-        mask \\ 0o37777
+        mask
       )
       when is_binary(symbol_name) do
+    A940.Conductor.log_this()
+    {symbol_name, :external_expression, relocation, exported?, mask} |> dbg()
+    state
   end
 
   def redefine_symbol_value(
@@ -105,7 +128,7 @@ defmodule A940.State do
         value,
         relocation,
         exported?,
-        mask \\ 0o37777
+        mask
       )
       when is_binary(symbol_name) do
     # {"Symbol---------------------- Set", Process.info(self(), :current_stacktrace)} |> dbg

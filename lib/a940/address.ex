@@ -25,6 +25,8 @@ defmodule A940.Address do
             forgotten?: false
 
   def new(value, relocation, exported \\ false, b14? \\ false, forgotten? \\ false)
+
+  def new(value, relocation, exported, b14?, forgotten?)
       when is_integer(value) and is_integer(relocation) and is_boolean(exported) and
              is_boolean(b14?) do
     mask =
@@ -41,8 +43,9 @@ defmodule A940.Address do
     }
   end
 
-  def new(:external_expression, expression, xx) do
+  def new(:external_expression, expression, xx, yy, zz) do
     Conductor.log_this()
+    {expression, xx, yy, zz} |> dbg
   end
 
   def new_expression(expression, exported \\ false) when is_list(expression),

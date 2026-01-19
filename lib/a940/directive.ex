@@ -4,7 +4,7 @@ defmodule A940.Directive do
   alias A940.MemoryAddress
   alias A940.{State, Memory, MemoryValue, Expression, Listing}
 
-  @magic_end_of_program 0o31_062_144
+  # @magic_end_of_program 0o31_062_144
   @dummy_location {0, 0}
 
   def bes(%State{} = state, :first_call),
@@ -185,13 +185,29 @@ defmodule A940.Directive do
     do: state
 
   def equ(%State{} = state, :second_call) do
-    {val, relocation} = Expression.evaluate(state)
+    Listing.add_line_listing(state, MemoryAddress.new_dummy(@dummy_location))
+
+    define_symbol_for_equ(state, Expression.evaluate(state))
+  end
+
+  def define_symbol_for_equ(%State{} = state, {:external_expression, expression_tokens})
+      when is_list(expression_tokens) do
+    State.redefine_symbol_as_expression(
+      state,
+      A940.Pass1.label_name(state.label_tokens),
+      expression_tokens,
+      A940.Pass1.label_global(state.label_tokens)
+    )
+  end
+
+  def define_symbol_for_equ(%State{} = state, {val, relocation})
+      when is_integer(val) and is_integer(relocation) do
+    {val, relocation} |> dbg
 
     # {val, relocation} = A940.Address.eval(state)
 
     # okay to re-define a symbol
     # state, symbol_name, value, ?, relocation, exported)
-    Listing.add_line_listing(state, MemoryAddress.new_dummy(@dummy_location))
 
     State.redefine_symbol_value(
       state,
@@ -302,20 +318,18 @@ defmodule A940.Directive do
   def f_end(%State{} = state, :second_call) do
     Listing.add_line_listing(state, MemoryAddress.new_dummy(@dummy_location))
 
-    cond do
-      state.f2lib? ->
-        # State.addzz_memory(state, @magic_end_of_program, 0)
+    if state.f2lib? do
+      # State.addzz_memory(state, @magic_end_of_program, 0)
+      raise "must implement f2lib magin end of program after literals are stored"
+      # Memory.set_memory(
+      #   State.get_current_location(state),
+      #   MemoryValue.new(@magic_end_of_program, 0)
+      # )
 
-        Memory.set_memory(
-          State.get_current_location(state),
-          MemoryValue.new(@magic_end_of_program, 0)
-        )
-
-        State.increment_current_location(state)
-
-      true ->
-        state
+      # State.increment_current_location(state)
     end
+
+    %{state | end_of_assembly: true}
   end
 
   def ident(%State{} = state, :first_call) do
