@@ -255,6 +255,8 @@ defmodule A940.Listing do
     |> Enum.join("")
   end
 
+  def concat_token_values({_type, value}), do: value
+
   def string_value(val) when is_binary(val), do: val
   def string_value(val) when is_integer(val), do: Integer.to_string(val)
   def string_value({_, val}) when is_binary(val), do: val
@@ -287,6 +289,7 @@ defmodule A940.Listing do
       relocation = symbol_value.relocation
       relocation_code = Enum.at(~w/A R/, relocation)
       value_code = fmt_int(value, 8, 8, " ")
+      export_indication = if symbol_value.exported?, do: "$", else: " "
 
       expression_value =
         if symbol_value.expression_tokens == [] do
@@ -295,7 +298,14 @@ defmodule A940.Listing do
           [" []", concat_list_of_token_list_values(symbol_value.expression_tokens), "]"]
         end
 
-      IO.puts([fmt_string(name, 8), ": ", value_code, relocation_code, expression_value])
+      IO.puts([
+        export_indication,
+        fmt_string(name, 8),
+        ": ",
+        value_code,
+        relocation_code,
+        expression_value
+      ])
     end)
 
     state

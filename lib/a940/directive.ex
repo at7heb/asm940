@@ -192,6 +192,8 @@ defmodule A940.Directive do
 
   def define_symbol_for_equ(%State{} = state, {:external_expression, expression_tokens})
       when is_list(expression_tokens) do
+    # {state.label_tokens, expression_tokens} |> dbg
+
     State.redefine_symbol_as_expression(
       state,
       A940.Pass1.label_name(state.label_tokens),

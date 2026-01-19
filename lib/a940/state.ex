@@ -90,8 +90,11 @@ defmodule A940.State do
         expression_tokens,
         exported?
       ) do
-    {label_name, expression_tokens, exported?} |> dbg
-    state
+    # {label_name, expression_tokens, exported?} |> dbg
+    address = Address.new_expression(expression_tokens, exported?)
+
+    new_symbols = Map.put(state.symbols, label_name, address)
+    %{state | symbols: new_symbols}
   end
 
   # def redefine_symbol_value(%__MODULE__{} = state, symbol_name) do

@@ -4,7 +4,7 @@ defmodule A940.Resolve do
 
   def resolve_symbols(%State{} = state) do
     scan_symbols(state)
-    resolve_literals(state)
+    |> resolve_literals()
   end
 
   def resolve_literals(%State{} = state) do
@@ -29,17 +29,15 @@ defmodule A940.Resolve do
     IO.puts("#{length(memory)} memory entries")
     IO.puts("#{length(has_literals)} of memory have literal addresses")
 
-    has_literals |> dbg
-
     evaluated_addresses_and_literals =
-      Enum.map(has_literals, &evaluate_a_literal(state, &1)) |> dbg
+      Enum.map(has_literals, &evaluate_a_literal(state, &1))
 
     uniq_literal_values =
       Enum.map(evaluated_addresses_and_literals, &elem(&1, 1))
       |> Enum.sort()
       |> Enum.uniq()
 
-    {"unique literal values", uniq_literal_values} |> dbg
+    # {"unique literal values", uniq_literal_values} |> dbg
 
     {new_state, value_address_map} =
       Enum.reduce(uniq_literal_values, {state, %{}}, fn literal_value,
@@ -53,7 +51,7 @@ defmodule A940.Resolve do
       end)
 
     # Enum.each()
-    value_address_map |> dbg
+    # value_address_map |> dbg
 
     # evaluated_addresses_and_literals tells where in the assembled code each literal value
     # .  is used.
@@ -126,17 +124,60 @@ defmodule A940.Resolve do
   def scan_symbols(%State{} = state) do
     symbol_names = Map.keys(state.symbols)
 
-    values =
+    unknown_name_and_values =
       Enum.map(symbol_names, fn name ->
-        Map.get(state.symbols, name)
+        {name, Map.get(state.symbols, name)}
       end)
+      |> Enum.filter(fn {_name, value} -> value.expression_tokens != [] end)
 
-    unknowns = Enum.filter(values, fn value -> value.expression_tokens != [] end)
+    {new_state, new_count} =
+      Enum.reduce(
+        unknown_name_and_values,
+        {state, 0},
+        fn {name, value}, {state, count} ->
+          {flag, new_state} = try_to_resolve_symbol(state, name, value)
 
-    if unknowns != [] do
-      raise "some undefined symbols"
+          cond do
+            flag == :defined ->
+              # {"defined #{name}", value} |> dbg
+              {new_state, count + 1}
+
+            flag == :undefined ->
+              {state, count}
+
+            true ->
+              raise "unknown return from try_to_resolve_symbol()"
+          end
+        end
+      )
+
+    if new_count == 0 do
+      # "done with resolving symbols" |> dbg
+      new_state
+    else
+      scan_symbols(new_state)
     end
+  end
 
-    state
+  def try_to_resolve_symbol(%State{} = state, name, %A940.Address{} = address)
+      when is_binary(name) do
+    value = Expression.evaluate(state, address.expression_tokens)
+
+    cond do
+      is_tuple(value) and tuple_size(value) == 2 and is_integer(elem(value, 0)) and
+          is_integer(elem(value, 1)) ->
+        {number, relocation} = value
+
+        {flag, new_state} =
+          {:defined,
+           State.redefine_symbol_value(state, name, number, relocation, false, 0o77777777)}
+
+        # Map.get(state.symbols, name) |> dbg
+        # Map.get(new_state.symbols, name) |> dbg
+        {flag, new_state}
+
+      true ->
+        {:undefined, state}
+    end
   end
 end

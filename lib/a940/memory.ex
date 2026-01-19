@@ -124,7 +124,7 @@ defmodule A940.Memory do
   end
 
   def first() do
-    :ets.first_lookup(@mem_ets) |> dbg
+    :ets.first_lookup(@mem_ets)
   end
 
   def next(%MemoryAddress{} = current) do
