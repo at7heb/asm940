@@ -71,6 +71,30 @@ defmodule A940.Memory do
     merge_memory(location, word_tag, mask)
   end
 
+  def merge_memory(%MemoryAddress{} = location, {address_value, relocation}, mask)
+      when address_value >= 0 and address_value <= 16383 and relocation >= 0 and relocation <= 15 and
+             mask == 0o37777 do
+    lookup = :ets.lookup(@mem_ets, location)
+
+    cond do
+      lookup == [] ->
+        raise(
+          "cannot merge into non-existent memory #{inspect(location)}, " <>
+            "#{Integer.to_string(address_value, 8)}, #{Integer.to_string(mask, 8)}"
+        )
+
+      true ->
+        [{_, %MemoryValue{} = content, source}] = lookup
+        content_mask = Bitwise.bxor(0o77777777, mask)
+        new_content_value = (content.value &&& content_mask) ||| (address_value &&& mask)
+
+        :ets.insert(
+          @mem_ets,
+          {location, %{content | value: new_content_value, relocation_value: relocation}, source}
+        )
+    end
+  end
+
   def merge_memory(%MemoryAddress{} = location, data, mask)
       when is_integer(data) and is_integer(mask) and data <= mask and data >= 0 and mask >= 0 do
     lookup = :ets.lookup(@mem_ets, location)

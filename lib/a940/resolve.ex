@@ -1,6 +1,5 @@
 defmodule A940.Resolve do
-  alias A940.Expression
-  alias A940.{Memory, MemoryAddress, MemoryValue, State}
+  alias A940.{Expression, Memory, MemoryAddress, MemoryValue, State}
 
   def resolve_symbols(%State{} = state) do
     scan_symbols(state)
@@ -84,10 +83,10 @@ defmodule A940.Resolve do
          ]}
       ) do
     [{:delimiter, "="} | literal_expression] = value.address_expression
-    literal_expression |> dbg
-    literal_value = Expression.evaluate(state, literal_expression) |> dbg
+    # literal_expression |> dbg
+    literal_value = Expression.evaluate(state, literal_expression)
     rv = {first_address, literal_value}
-    {"evaluate a literal:", rv} |> dbg
+    # {"evaluate a literal:", rv} |> dbg
     rv
   end
 
@@ -179,5 +178,53 @@ defmodule A940.Resolve do
       true ->
         {:undefined, state}
     end
+  end
+
+  def update_symbol_references(%State{} = state) do
+    update_symbol_references(state, Memory.first())
+  end
+
+  def update_symbol_references(%State{} = state, address_and_content) do
+    {address0, [{address1, word, _address2}]} = address_and_content
+    if address0 != address1, do: raise("address mismatch in update_symbol_references")
+    # address_and_content |> dbg
+    new_state = update_one_symbol_reference(state, word, address0)
+
+    next = Memory.next(address0)
+
+    if next == :"$end_of_table" do
+      new_state
+    else
+      update_symbol_references(new_state, next)
+    end
+  end
+
+  def update_one_symbol_reference(
+        %State{} = state,
+        %MemoryValue{address_expression: []} = _value,
+        %MemoryAddress{} = _address
+      ) do
+    state
+  end
+
+  def update_one_symbol_reference(
+        %State{} = state,
+        %MemoryValue{address_expression: expr} = _value,
+        %MemoryAddress{} = address
+      ) do
+    # {value, address} |> dbg
+    expr_value = Expression.evaluate(state, expr)
+    # {address, expr, expr_value} |> dbg
+
+    cond do
+      is_tuple(expr_value) and is_integer(elem(expr_value, 0)) and is_integer(elem(expr_value, 1)) ->
+        Memory.merge_address(address, expr_value, 14)
+
+      true ->
+        nil
+    end
+
+    # memory updates don't change state; return it unchanged.
+    state
   end
 end

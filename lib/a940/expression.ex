@@ -93,9 +93,9 @@ defmodule A940.Expression do
 
   def maybe_evaluate_literal(%__MODULE__{} = evstate, tokens) when is_list(tokens) do
     try do
-      {"maybe_evaluate_literal", tokens} |> dbg
+      # {"maybe_evaluate_literal", tokens} |> dbg
       value = %{evstate | tokens: tl(tokens)} |> evaluate()
-      value |> dbg
+      # value |> dbg
       [{:delimiter, "="}, {:number, value}]
     catch
       _ -> {:literal_expression, tokens}

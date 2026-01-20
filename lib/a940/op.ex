@@ -239,6 +239,8 @@ defmodule A940.Op do
       when is_tuple(address) and is_integer(tag) and is_integer(mask) and is_integer(indirect) do
     {address_value, relocation} = address
     # would like to assert that relocation is zero if mask is other that 0o37777
+    {state.operation, tag, address, mask, indirect} |> dbg
+
     word =
       state.operation.value ||| (tag &&& 7) <<< 21 ||| (address_value &&& mask) |||
         indirect <<< 14
