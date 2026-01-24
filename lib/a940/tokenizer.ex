@@ -85,7 +85,7 @@ defmodule A940.Tokenizer do
               {:delimiter, ":", ":"}
 
             true ->
-              {:default_base_number, decode_number(hd(number), flags), hd(number)} |> dbg
+              {:default_base_number, decode_number(hd(number), flags), hd(number)}
           end
 
         number != nil ->

@@ -1,6 +1,8 @@
 defmodule A940.MemoryValue do
   import Bitwise
   alias A940.Listing
+  @all_ones 0o77_777_777
+  @address_ones 0o37777
 
   @moduledoc """
   represent the value of a memory word emitted by the assembler
@@ -24,18 +26,18 @@ defmodule A940.MemoryValue do
             # list of tokens or empty; most of the time
             address_expression: [],
             relocation_value: 0,
-            mask: 0o37777,
+            mask: @address_ones,
             dummy: false
 
   @doc """
   create a memory value with given conttent, relocation value, and mask
   """
-  def new(value, address_expression_tokens, mask \\ 0o37777)
+  def new(value, address_expression_tokens, mask \\ @address_ones)
 
   def new(value, relocation, mask)
-      when is_integer(value) and is_integer(relocation) and value >= 0 and value <= 0o77777777 and
-             (mask == 0o777 or mask == 0o37777 or mask == 0o77777777) do
-    if (Bitwise.bxor(0o77_777_777, mask) &&& value) != 0 do
+      when is_integer(value) and is_integer(relocation) and value >= 0 and value <= @all_ones and
+             (mask == 0o777 or mask == @address_ones or mask == @all_ones) do
+    if (Bitwise.bxor(@all_ones, mask) &&& value) != 0 do
       raise "new value with bits in unmasked area #{Integer.to_string(value, 8)} &&& #{Integer.to_string(mask, 8)}"
     end
 
@@ -44,13 +46,15 @@ defmodule A940.MemoryValue do
 
   def new(value, address_expression_tokens, mask)
       when is_integer(value) and is_list(address_expression_tokens) and value >= 0 and
-             value <= 0o77777777 and
-             (mask == 0o777 or mask == 0o37777 or mask == 0o77777777),
-      do: %__MODULE__{
-        value: value,
-        relocation_value: 0,
-        address_expression: address_expression_tokens
-      }
+             value <= @all_ones and is_integer(mask) and
+             (mask == 0o777 or mask == @address_ones or mask == @all_ones) do
+    %__MODULE__{
+      value: value,
+      relocation_value: 0,
+      address_expression: address_expression_tokens,
+      mask: mask
+    }
+  end
 
   def new_for_expression(address_expression_tokens, mask)
       when is_list(address_expression_tokens),

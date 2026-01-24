@@ -32,7 +32,7 @@ defmodule A940.Pass1 do
                    if state.opcode_tokens == [{:symbol, "END"}] do
                      %{state | end_of_assembly: true}
                    else
-                     state.opcode_tokens |> dbg
+                     #  state.opcode_tokens |> dbg
                      state
                    end
 

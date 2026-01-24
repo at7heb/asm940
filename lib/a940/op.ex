@@ -209,9 +209,18 @@ defmodule A940.Op do
   def handle_direct_op(%State{} = state, {opcode_token_flag, opcode} = _symbol_name) do
     op_structure =
       cond do
-        opcode_token_flag == :number -> new(opcode, :yes_address, 14)
-        opcode_token_flag == :symbol -> get_op(opcode)
-        true -> raise "unknown opcode #{opcode} line #{state.line_number}"
+        opcode_token_flag == :number ->
+          new(opcode, :yes_address, 14)
+
+        opcode_token_flag == :symbol ->
+          get_op(opcode)
+
+        opcode_token_flag == :default_base_number ->
+          opcode = Integer.to_string(opcode) |> String.to_integer(state.flags.default_base)
+          new(opcode, :yes_address, 9)
+
+        true ->
+          raise "unknown opcode {#{opcode_token_flag}, #{opcode}} line #{state.line_number}"
       end
 
     # ensure indirect only if 14 bit address.

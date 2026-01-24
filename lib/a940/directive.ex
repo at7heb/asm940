@@ -6,6 +6,8 @@ defmodule A940.Directive do
 
   # @magic_end_of_program 0o31_062_144
   @dummy_location {0, 0}
+  @all_ones 0o77_777_777
+  # @address_ones 0o37_777
 
   def bes(%State{} = state, :first_call),
     do: state
@@ -74,7 +76,7 @@ defmodule A940.Directive do
     word = @rch_instruction ||| address_field
 
     # State.addzz_memory(state, word, 0)
-    Memory.set_memory(State.get_current_location(state), MemoryValue.new(word, 0, 0o77_777_777))
+    Memory.set_memory(State.get_current_location(state), MemoryValue.new(word, 0, @all_ones))
     Listing.add_line_listing(state)
     State.increment_current_location(state)
   end
@@ -108,7 +110,12 @@ defmodule A940.Directive do
 
       match?([delimiter: "=", number: {_val, _relocation}], address) ->
         address |> dbg
-        Memory.set_memory(State.get_current_location(state), MemoryValue.new(0, address))
+
+        Memory.set_memory(
+          State.get_current_location(state),
+          MemoryValue.new(0, address, @all_ones)
+        )
+
         Listing.add_line_listing(state)
         State.increment_current_location(state)
 
@@ -120,7 +127,7 @@ defmodule A940.Directive do
 
         Memory.set_memory(
           State.get_current_location(state),
-          MemoryValue.new(value, relocation, 0o77777777)
+          MemoryValue.new(value, relocation, @all_ones)
         )
 
         Listing.add_line_listing(state)
@@ -135,7 +142,7 @@ defmodule A940.Directive do
 
         Memory.set_memory(
           State.get_current_location(state),
-          MemoryValue.new(value, relocation, 0o77777777)
+          MemoryValue.new(value, relocation, @all_ones)
         )
 
         Listing.add_line_listing(state)
@@ -150,7 +157,7 @@ defmodule A940.Directive do
   def literal_data(%State{} = state, {number, relocation} = literal_value)
       when is_integer(number) and is_integer(relocation) do
     location = State.get_current_location(state)
-    Memory.set_memory(location, MemoryValue.new(number, relocation, 0o77777777))
+    Memory.set_memory(location, MemoryValue.new(number, relocation, @all_ones))
     Listing.add_line_listing(state, :literal, literal_value)
     new_state = State.increment_current_location(state)
     {new_state, location}
@@ -159,7 +166,7 @@ defmodule A940.Directive do
   def literal_data(%State{} = state, {:external_expression, expression} = _literal_value)
       when is_list(expression) do
     location = State.get_current_location(state)
-    Memory.set_memory(location, MemoryValue.new(0, 0, 0o77_777_777))
+    Memory.set_memory(location, MemoryValue.new(0, 0, @all_ones))
     Listing.add_line_listing(state, :literal, expression)
     new_state = State.increment_current_location(state)
     {new_state, location}
@@ -464,7 +471,7 @@ defmodule A940.Directive do
       #   state.address_tokens_list
       # ),
       instruction_address,
-      MemoryValue.new(instruction, relocation, 0o77_777_777)
+      MemoryValue.new(instruction, relocation, @all_ones)
     )
 
     A940.Listing.add_line_listing(state, instruction_address)
@@ -499,7 +506,7 @@ defmodule A940.Directive do
     Enum.reduce(line_data, state, fn word, stt ->
       Memory.set_memory(
         State.get_current_location(stt),
-        MemoryValue.new(word, 0, 0o77_777_777)
+        MemoryValue.new(word, 0, @all_ones)
       )
 
       State.increment_current_location(stt)
@@ -537,7 +544,7 @@ defmodule A940.Directive do
     # State.addzz_memory(state, 0, 0)
     Memory.set_memory(
       State.get_current_location(state),
-      MemoryValue.new(0, 0)
+      MemoryValue.new(0, 0, @all_ones)
     )
 
     Listing.add_line_listing(state)

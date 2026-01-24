@@ -3,7 +3,8 @@ defmodule A940.Memory do
 
   alias A940.{Conductor, MemoryAddress, MemoryValue, State}
   @mem_ets :memory_locations
-  @trace_location 0o2
+  @trace_location 0o27777
+  @all_ones 0o77_777_777
 
   def new_memory_image_table() do
     case :ets.whereis(@mem_ets) do
@@ -62,7 +63,7 @@ defmodule A940.Memory do
           content
           | value: new_content_value,
             relocation_value: address_relocation,
-            mask: 0o77777777,
+            mask: @all_ones,
             dummy: false
         }
 
@@ -80,7 +81,8 @@ defmodule A940.Memory do
   end
 
   def merge_memory(%MemoryAddress{} = location, {address_value, relocation}, mask)
-      when address_value >= 0 and address_value <= 16383 and relocation >= 0 and
+      # when address_value >= 0 and address_value <= 16383 and relocation >= 0 and
+      when address_value >= 0 and relocation >= 0 and
              relocation <= 15 and
              mask == 0o37777 do
     lookup = :ets.lookup(@mem_ets, location)
@@ -94,8 +96,14 @@ defmodule A940.Memory do
 
       true ->
         [{_, %MemoryValue{} = content, source}] = lookup
-        content_mask = Bitwise.bxor(0o77777777, mask)
-        new_content_value = (content.value &&& content_mask) ||| (address_value &&& mask)
+        update_mask = content.mask &&& @all_ones
+
+        if mask != update_mask do
+          raise "mask/update_mask #{Integer.to_string(mask, 8)} #{Integer.to_string(update_mask, 8)} mismatch"
+        end
+
+        remaining_mask = Bitwise.bxor(@all_ones, update_mask)
+        new_content_value = (content.value &&& remaining_mask) ||| (address_value &&& update_mask)
         if location.location == @trace_location, do: Conductor.log_this()
 
         :ets.insert(
@@ -123,6 +131,37 @@ defmodule A940.Memory do
         if location.location == @trace_location, do: Conductor.log_this()
 
         :ets.insert(@mem_ets, {location, %{content | value: new_content_value}, source})
+    end
+  end
+
+  def merge_masked(%MemoryAddress{} = location, {value, relocation})
+      when is_integer(value) and value >= 0 and value <= @all_ones do
+    lookup = :ets.lookup(@mem_ets, location)
+
+    cond do
+      lookup == [] ->
+        raise(
+          "cannot merge into non-existent memory #{inspect(location)}, " <>
+            "#{Integer.to_string(value, 8)}B #{relocation}D"
+        )
+
+      true ->
+        [{_, %MemoryValue{} = content, source}] = lookup
+        masked_data = value &&& content.mask
+        masked_content = content.value &&& bxor(@all_ones, content.mask)
+        new_content_value = masked_content ||| masked_data
+        if location.location == @trace_location, do: Conductor.log_this()
+
+        :ets.insert(
+          @mem_ets,
+          {location,
+           %{
+             content
+             | value: new_content_value,
+               relocation_value: relocation,
+               address_expression: []
+           }, source}
+        )
     end
   end
 

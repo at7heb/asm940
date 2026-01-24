@@ -224,7 +224,7 @@ defmodule A940.Resolve do
           )
         end
 
-        Memory.merge_address(address, expr_value, 14)
+        Memory.merge_masked(address, expr_value)
 
       true ->
         nil

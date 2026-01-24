@@ -54,7 +54,7 @@ defmodule A940.Expression do
 
   def evaluate(%State{} = state, tokens) do
     {location, relocation} = State.current_location(state)
-    {state.line_number, tokens, state.flags.default_base} |> dbg
+    # {state.line_number, tokens, state.flags.default_base} |> dbg
     evaluate(tokens, state.symbols, location, relocation, state.flags.default_base)
   end
 
@@ -141,7 +141,7 @@ defmodule A940.Expression do
     {evstate.tokens, evstate.operator_stack, evstate.value_stack}
 
     if first == {:special, "@"} do
-      "special @ !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" |> dbg
+      # "special @ !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" |> dbg
       push_operator(rest(evstate), "U@")
     else
       evstate
@@ -246,7 +246,7 @@ defmodule A940.Expression do
 
       tag == :default_base_number ->
         n = Integer.to_string(value) |> String.to_integer(evstate.default_base)
-        {value, n, evstate.default_base} |> dbg
+        # {value, n, evstate.default_base} |> dbg
         push_number(rest(evstate), n &&& 0o77_777_777)
 
       tag == :symbol ->
