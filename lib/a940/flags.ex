@@ -6,4 +6,5 @@ defmodule A940.Flags do
             done: false
 
   def default, do: %__MODULE__{}
+  def default_with_base(base), do: %__MODULE__{default_base: base}
 end

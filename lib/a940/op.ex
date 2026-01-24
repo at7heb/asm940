@@ -239,16 +239,19 @@ defmodule A940.Op do
       when is_tuple(address) and is_integer(tag) and is_integer(mask) and is_integer(indirect) do
     {address_value, relocation} = address
     # would like to assert that relocation is zero if mask is other that 0o37777
-    {state.operation, tag, address, mask, indirect} |> dbg
+    # {state.operation, Integer.to_string(state.operation.value, 8), tag, address, mask, indirect}
+    # |> dbg
 
     word =
       state.operation.value ||| (tag &&& 7) <<< 21 ||| (address_value &&& mask) |||
         indirect <<< 14
 
+    # Integer.to_string(word, 8) |> dbg
+
     # State.addzz_memory(state, word, relocation)
     Memory.set_memory(
       State.get_current_location(state),
-      MemoryValue.new(word, relocation)
+      MemoryValue.new(word, relocation, 0o77_777_777)
     )
 
     Listing.add_line_listing(state)
@@ -330,12 +333,12 @@ defmodule A940.Op do
 
     cond do
       match?([delimiter: "=", number: {_addr, _relo}], address) ->
-        IO.puts("1 want to put #{inspect(address)} into instruction")
+        # IO.puts("1 want to put #{inspect(address)} into instruction")
         update_opcode_memory(state, address, tag, indirect)
 
       is_tuple(address) and tuple_size(address) == 2 and is_number(elem(address, 0)) and
           is_number(elem(address, 1)) ->
-        IO.puts("2 want to put #{inspect(address)} into instruction")
+        # IO.puts("2 want to put #{inspect(address)} into instruction")
 
         update_opcode_memory(
           state,

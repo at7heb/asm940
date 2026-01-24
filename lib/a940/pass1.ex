@@ -28,6 +28,14 @@ defmodule A940.Pass1 do
                    |> dbg
                  end
 
+                 state =
+                   if state.opcode_tokens == [{:symbol, "END"}] do
+                     %{state | end_of_assembly: true}
+                   else
+                     state.opcode_tokens |> dbg
+                     state
+                   end
+
                  assemble_statement(
                    A940.Macro.expand_dummy(state, tokens_list),
                    update_state_for_next_statement(current_state, line_number)
@@ -182,7 +190,7 @@ defmodule A940.Pass1 do
       when is_integer(linenumber) and linenumber > 0 do
     %{
       state
-      | flags: A940.Flags.default(),
+      | flags: A940.Flags.default_with_base(state.flags.default_base),
         line_number: linenumber,
         label_tokens: [],
         opcode_tokens: [],

@@ -62,19 +62,36 @@ defmodule A940.Address do
   # eval can return any number, not just one that fits into a 14-bit address field
   # it is in this A940.Address module because the number is in the address field of
   # each instruction.
+  def eval(%State{} = state, [{:default_base_number, num}] = _address_tokens)
+      when is_integer(num) do
+    value = Integer.to_string(num) |> String.to_integer(state.flags.default_base)
+    {value &&& 0o7777777, 0}
+  end
+
   def eval(%State{} = _state, [{:number, num}] = _address_tokens) when is_integer(num),
     do: {num &&& 0o7777777, 0}
 
   def eval(%State{} = state, [{:number, {_num, representation}}] = _address_tokens)
       when is_binary(representation),
-      do: {String.to_integer(representation, state.flags.default_base) &&& 0o7777777, 0}
+      do:
+        (
+          {representation, state.flags.default_base} |> dbg
+
+          {String.to_integer(representation, state.flags.default_base) &&& 0o7777777, 0}
+        )
 
   def eval(%State{} = state, [{:symbol, address_part_symbol}] = address_token) do
     address_part_address = Map.get(state.symbols, address_part_symbol, nil)
     # |> dbg()
     if address_part_address == nil do
       {address_part_symbol, map_size(state.symbols), state.line_number,
-       A940.Expression.evaluate(address_token, state.symbols, state.location_relative, 1)}
+       A940.Expression.evaluate(
+         address_token,
+         state.symbols,
+         state.location_relative,
+         1,
+         state.flags.default_base
+       )}
       |> dbg
     end
 

@@ -218,6 +218,12 @@ defmodule A940.Resolve do
 
     cond do
       is_tuple(expr_value) and is_integer(elem(expr_value, 0)) and is_integer(elem(expr_value, 1)) ->
+        if elem(expr_value, 0) == 24041 do
+          IO.puts(
+            "merging address #{inspect(expr)} to address #{Integer.to_string(address.location, 8)}B"
+          )
+        end
+
         Memory.merge_address(address, expr_value, 14)
 
       true ->

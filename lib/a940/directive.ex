@@ -74,7 +74,7 @@ defmodule A940.Directive do
     word = @rch_instruction ||| address_field
 
     # State.addzz_memory(state, word, 0)
-    Memory.set_memory(State.get_current_location(state), MemoryValue.new(word, 0))
+    Memory.set_memory(State.get_current_location(state), MemoryValue.new(word, 0, 0o77_777_777))
     Listing.add_line_listing(state)
     State.increment_current_location(state)
   end
@@ -98,7 +98,7 @@ defmodule A940.Directive do
       qualifier == :external_expression or qualifier == :literal_expression ->
         Memory.set_memory(
           State.get_current_location(state),
-          MemoryValue.new(tokens_list, 0o77777777)
+          MemoryValue.new_for_expression(tokens_list, 0o77777777)
         )
 
         Listing.add_line_listing(state)
@@ -159,7 +159,7 @@ defmodule A940.Directive do
   def literal_data(%State{} = state, {:external_expression, expression} = _literal_value)
       when is_list(expression) do
     location = State.get_current_location(state)
-    Memory.set_memory(location, MemoryValue.new(0, 0))
+    Memory.set_memory(location, MemoryValue.new(0, 0, 0o77_777_777))
     Listing.add_line_listing(state, :literal, expression)
     new_state = State.increment_current_location(state)
     {new_state, location}
@@ -204,7 +204,7 @@ defmodule A940.Directive do
 
   def define_symbol_for_equ(%State{} = state, {val, relocation})
       when is_integer(val) and is_integer(relocation) do
-    {val, relocation} |> dbg
+    # {val, relocation} |> dbg
 
     # {val, relocation} = A940.Address.eval(state)
 
@@ -464,7 +464,7 @@ defmodule A940.Directive do
       #   state.address_tokens_list
       # ),
       instruction_address,
-      MemoryValue.new(instruction, relocation)
+      MemoryValue.new(instruction, relocation, 0o77_777_777)
     )
 
     A940.Listing.add_line_listing(state, instruction_address)
@@ -499,7 +499,7 @@ defmodule A940.Directive do
     Enum.reduce(line_data, state, fn word, stt ->
       Memory.set_memory(
         State.get_current_location(stt),
-        MemoryValue.new(word, 0)
+        MemoryValue.new(word, 0, 0o77_777_777)
       )
 
       State.increment_current_location(stt)
@@ -507,8 +507,12 @@ defmodule A940.Directive do
     end)
   end
 
-  def oct(%State{} = state, _) do
+  def oct(%State{} = state, which) do
     new_flags = %{state.flags | default_base: 8}
+
+    if which == :second_call,
+      do: Listing.add_line_listing(state, MemoryAddress.new_dummy(@dummy_location))
+
     %{state | flags: new_flags}
   end
 

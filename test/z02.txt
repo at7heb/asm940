@@ -1,6 +1,32 @@
 01T IDENT
  LIST 01T
+ DATA 1252
+ OCT
+ DATA 1252
+ END
 WHAT EQU L0+5
+A0 EQU 1B4
+A1 EQU 4B3
+ DATA @A0
+ DATA @A0+A1
+ DATA @A0-A1
+ DATA [@A0]+A1
+ DATA [@A0]-A1
+ DATA [@A0]+[@A1]
+ DATA @A0+[@A1]
+ DATA @A0!@A1
+ DATA @A0+@A1
+ DATA [@A0]![@A1]
+ DATA [@A0]&[@A1]
+ DATA [@A0]%[@A1]
+ DATA A1-[@A0]
+ DATA 3*[1+1]
+ DATA 3*[5-1]
+ DATA A1*3
+ DATA 5*[-A0]
+D1 EQU 5
+D2 EQU 17
+ DATA -D1*[-D2]
  EAX L0-3
  LDA L99 *EXTERNAL
  LDA *
@@ -15,7 +41,7 @@ L1 LDX 2
  EAX L1
  EAX =L1
  BRU *-5
- END
+ END !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 E0 EQU L1-L0
  DATA E0
 E1 EQU L0-L1

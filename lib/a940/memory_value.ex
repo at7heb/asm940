@@ -34,8 +34,13 @@ defmodule A940.MemoryValue do
 
   def new(value, relocation, mask)
       when is_integer(value) and is_integer(relocation) and value >= 0 and value <= 0o77777777 and
-             (mask == 0o777 or mask == 0o37777 or mask == 0o77777777),
-      do: %__MODULE__{value: value &&& mask, relocation_value: relocation, mask: mask}
+             (mask == 0o777 or mask == 0o37777 or mask == 0o77777777) do
+    if (Bitwise.bxor(0o77_777_777, mask) &&& value) != 0 do
+      raise "new value with bits in unmasked area #{Integer.to_string(value, 8)} &&& #{Integer.to_string(mask, 8)}"
+    end
+
+    %__MODULE__{value: value &&& mask, relocation_value: relocation, mask: mask}
+  end
 
   def new(value, address_expression_tokens, mask)
       when is_integer(value) and is_list(address_expression_tokens) and value >= 0 and
@@ -47,12 +52,13 @@ defmodule A940.MemoryValue do
         address_expression: address_expression_tokens
       }
 
-  def new(address_expression_tokens)
+  def new_for_expression(address_expression_tokens, mask)
       when is_list(address_expression_tokens),
       do: %__MODULE__{
         value: 0,
         relocation_value: 0,
-        address_expression: address_expression_tokens
+        address_expression: address_expression_tokens,
+        mask: mask
       }
 
   def new_dummy(), do: %__MODULE__{dummy: true}

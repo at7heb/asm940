@@ -13,6 +13,8 @@ defmodule A940.Pass0 do
       1..map_size(state.lines),
       fn line_number ->
         tokens = A940.Tokenizer.tokens(line_number, Map.get(state.lines, line_number), @flagsD)
+        if line_number <= 7, do: tokens |> dbg
+        if tokens == [spaces: " ", symbol: "END", eol: ""], do: "EUREKA!" |> dbg
         A940.Tokens.store_tokens(line_number, tokens)
       end
     )

@@ -8,7 +8,8 @@ defmodule A940.Expression do
             operator_stack: [],
             symbols: %{},
             current_location: 0,
-            current_relocation: 0
+            current_relocation: 0,
+            default_base: 10
 
   @debug_line nil
 
@@ -40,23 +41,25 @@ defmodule A940.Expression do
     A * B + C: Push A; Push *; Push B; + <= *; pop 2 operands and 1 operator; push result back
 
   """
-  def new(tokens, symbols, current_location, current_relocation) do
+  def new(tokens, symbols, current_location, current_relocation, base) do
     %__MODULE__{
       tokens: tokens ++ [{:delimiter, "]"}],
       symbols: symbols,
       current_location: current_location,
       current_relocation: current_relocation,
-      operator_stack: ["["]
+      operator_stack: ["["],
+      default_base: base
     }
   end
 
   def evaluate(%State{} = state, tokens) do
     {location, relocation} = State.current_location(state)
-    evaluate(tokens, state.symbols, location, relocation)
+    {state.line_number, tokens, state.flags.default_base} |> dbg
+    evaluate(tokens, state.symbols, location, relocation, state.flags.default_base)
   end
 
-  def evaluate(tokens, symbols, current_location, current_relocation) do
-    evstate = new(tokens, symbols, current_location, current_relocation)
+  def evaluate(tokens, symbols, current_location, current_relocation, base) do
+    evstate = new(tokens, symbols, current_location, current_relocation, base)
 
     try do
       evaluate(evstate)
@@ -79,7 +82,8 @@ defmodule A940.Expression do
       hd(state.address_tokens_list),
       state.symbols,
       current_location,
-      current_relocation
+      current_relocation,
+      state.flags.default_base
     )
   end
 
@@ -133,10 +137,17 @@ defmodule A940.Expression do
     evstate
   end
 
-  def ev_basic_expression(%__MODULE__{} = evstate) do
+  def ev_basic_expression(%__MODULE__{tokens: [first | _rest]} = evstate) do
     {evstate.tokens, evstate.operator_stack, evstate.value_stack}
 
-    ev_primary(evstate) |> op_and_primary()
+    if first == {:special, "@"} do
+      "special @ !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" |> dbg
+      push_operator(rest(evstate), "U@")
+    else
+      evstate
+    end
+    |> ev_primary()
+    |> op_and_primary()
   end
 
   def op_and_primary(%__MODULE__{} = evstate) do
@@ -169,6 +180,10 @@ defmodule A940.Expression do
         push_or_evaluate(rest(evstate), "U-") |> ev_basic_expression()
 
       hd(evstate.tokens) == {:delimiter, "U@"} ->
+        push_or_evaluate(rest(evstate), "U@") |> ev_basic_expression()
+
+      hd(evstate.tokens) == {:special, "@"} ->
+        "unary@" |> dbg
         push_or_evaluate(rest(evstate), "U@") |> ev_basic_expression()
 
       hd(evstate.tokens) == {:special, "<"} ->
@@ -229,6 +244,11 @@ defmodule A940.Expression do
       tag == :number ->
         push_number(rest(evstate), value)
 
+      tag == :default_base_number ->
+        n = Integer.to_string(value) |> String.to_integer(evstate.default_base)
+        {value, n, evstate.default_base} |> dbg
+        push_number(rest(evstate), n &&& 0o77_777_777)
+
       tag == :symbol ->
         push_symbol(rest(evstate), value)
 
@@ -252,6 +272,8 @@ defmodule A940.Expression do
         push_number(rest(evstate), value_1)
 
       true ->
+        IO.puts("#{inspect(evstate)}")
+        IO.puts("#{inspect({evstate.tokens, evstate.operator_stack, evstate.value_stack})}")
         raise "error in ev_primary"
     end
   end
@@ -332,23 +354,6 @@ defmodule A940.Expression do
             %{evstate | operator_stack: rest_of_ops}
         end
 
-      # new_evstate = %{evstate | operator_stack: new_rest_of_ops} |> dbg
-
-      # cond do
-      #   # process the next operator if there is one...
-
-      #   rest_of_ops != [] ->
-      #     [new_operator | new_operator_stack] = rest_of_ops
-      #     new_evstate = %{evstate | operator_stack: new_operator_stack}
-      #     {new_operator, new_operator_stack} |> dbg
-      #     push_or_evaluate(new_evstate, new_operator)
-
-      #   # otherwise return
-      #   true ->
-      #     "push_or_evaluate returning" |> dbg
-      #     %{evstate | operator_stack: []}
-      # end
-
       precedence(op) < precedence(first_op) ->
         # keep evaluating until operator on top of the stack is higher precedence
         apply_stack_operator(evstate) |> push_or_evaluate(op)
@@ -409,7 +414,7 @@ defmodule A940.Expression do
         30
 
       "U@" ->
-        25
+        45
 
       "&" ->
         20

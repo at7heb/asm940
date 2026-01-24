@@ -4,7 +4,7 @@ defmodule A940.Tokenizer do
   @white_space ~r/^\h+/
   # @number ~r/^([-+]?\d+)/
   @number ~r/^\d+/
-  @decimal_number ~r/^(\d+)(D)([-+*\/,()=.$_" ]|$)/
+  @decimal_number ~r/^(\d+)(D)([-+*\/,()=.$_"! ]|$)/
   # @decimal_number ~r/^([-+]?\d+)(D)([-+*\/,()=.$_" ]|$)/
   @octal_number ~r/^([0-7]+)B([0-7]?)([-+*\/,()=.$_"! ]|$)/
   # @octal_number ~r/^([-+]?[0-7]+)B([0-7]?)([-+*\/,()=.$_" ]|$)/
@@ -85,12 +85,12 @@ defmodule A940.Tokenizer do
               {:delimiter, ":", ":"}
 
             true ->
-              {:number, decode_number(hd(number), flags), hd(number)}
+              {:default_base_number, decode_number(hd(number), flags), hd(number)} |> dbg
           end
 
         number != nil ->
           {line, number} |> dbg
-          {:number, decode_number(hd(number), flags), hd(number)}
+          {:default_base_number, decode_number(hd(number), flags), hd(number)}
 
         # symbol != nil ->
         #   {:symbol, hd(symbol), hd(symbol)}
@@ -126,8 +126,13 @@ defmodule A940.Tokenizer do
     all_tokens(new_line, [new_token | token_list], flags, line_number)
   end
 
-  def decode_number(number, flags),
-    do: String.to_integer(number, flags.default_base) &&& 0o77777777
+  def decode_number(number, flags) do
+    if(number == "24041") do
+      IO.puts("number: #{number} flags #{inspect(flags)}")
+    end
+
+    String.to_integer(number, flags.default_base)
+  end
 
   def decode_decimal(dec), do: String.to_integer(Enum.at(dec, 1)) &&& 0o77777777
 

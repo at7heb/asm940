@@ -1,8 +1,9 @@
 defmodule A940.Memory do
   import Bitwise
-  # alias A940.Address
-  alias A940.{MemoryAddress, MemoryValue}
+
+  alias A940.{Conductor, MemoryAddress, MemoryValue, State}
   @mem_ets :memory_locations
+  @trace_location 0o2
 
   def new_memory_image_table() do
     case :ets.whereis(@mem_ets) do
@@ -16,6 +17,11 @@ defmodule A940.Memory do
   def set_memory(%MemoryAddress{} = address, %MemoryValue{} = value) do
     # case is_empty?(MemoryAddress.address(address)) do
     #   true ->
+    if address.location == @trace_location do
+      IO.puts("address: #{inspect(address)}: \n.        #{inspect(value)}")
+      Conductor.log_this()
+    end
+
     :ets.insert(
       @mem_ets,
       {MemoryAddress.address(address), value, MemoryAddress.source(address)}
@@ -60,6 +66,8 @@ defmodule A940.Memory do
             dummy: false
         }
 
+        if location.location == @trace_location, do: Conductor.log_this()
+
         :ets.insert(@mem_ets, {location, new_content, source})
     end
   end
@@ -72,7 +80,8 @@ defmodule A940.Memory do
   end
 
   def merge_memory(%MemoryAddress{} = location, {address_value, relocation}, mask)
-      when address_value >= 0 and address_value <= 16383 and relocation >= 0 and relocation <= 15 and
+      when address_value >= 0 and address_value <= 16383 and relocation >= 0 and
+             relocation <= 15 and
              mask == 0o37777 do
     lookup = :ets.lookup(@mem_ets, location)
 
@@ -87,6 +96,7 @@ defmodule A940.Memory do
         [{_, %MemoryValue{} = content, source}] = lookup
         content_mask = Bitwise.bxor(0o77777777, mask)
         new_content_value = (content.value &&& content_mask) ||| (address_value &&& mask)
+        if location.location == @trace_location, do: Conductor.log_this()
 
         :ets.insert(
           @mem_ets,
@@ -110,6 +120,8 @@ defmodule A940.Memory do
         [{_, %MemoryValue{} = content, source}] = lookup
         masked_data = data &&& mask
         new_content_value = content.value ||| masked_data
+        if location.location == @trace_location, do: Conductor.log_this()
+
         :ets.insert(@mem_ets, {location, %{content | value: new_content_value}, source})
     end
   end
@@ -153,5 +165,19 @@ defmodule A940.Memory do
 
   def next(%MemoryAddress{} = current) do
     :ets.next_lookup(@mem_ets, MemoryAddress.address(current))
+  end
+
+  def dump_memory(%State{} = state, tag) do
+    IO.puts(tag)
+
+    :ets.tab2list(@mem_ets)
+    # |> Enum.take(3)
+    |> Enum.map(fn {address, content, _address1} ->
+      {address.relocation, Integer.to_string(address.location, 8),
+       Integer.to_string(content.value, 8)}
+    end)
+    |> Enum.each(&IO.puts("#{inspect(&1)}"))
+
+    state
   end
 end
