@@ -272,41 +272,62 @@ defmodule A940.Listing do
     |> String.pad_leading(width, pad)
   end
 
-  def fmt_string(s, width) when is_binary(s) and is_integer(width) do
-    String.pad_trailing(s, width, " ")
+  def fmt_string(s, width, pad_side \\ :right) when is_binary(s) and is_integer(width) do
+    if pad_side == :right,
+      do: String.pad_trailing(s, width, " "),
+      else: String.pad_leading(s, width, " ")
   end
 
   def get_listing_line_number() do
     :ets.update_counter(@listing_ets, :current_line, 1)
   end
 
+  @columns 2
   def list_symbols(%State{symbols: symbols} = state) do
     symbol_names = Map.keys(symbols) |> Enum.sort()
 
-    Enum.each(symbol_names, fn name ->
-      symbol_value = Map.get(symbols, name)
-      value = symbol_value.value
-      relocation = symbol_value.relocation
-      relocation_code = Enum.at(~w/A R/, relocation)
-      value_code = fmt_int(value, 8, 8, " ")
-      export_indication = if symbol_value.exported?, do: "$", else: " "
+    symbol_listings =
+      Enum.map(symbol_names, fn name ->
+        symbol_value = Map.get(symbols, name)
+        value = symbol_value.value
+        relocation = symbol_value.relocation
+        relocation_code = [" ", Enum.at(~w/A R/, relocation)]
+        octal_value_code = [fmt_int(value, 11, 8, " ")]
+        decimal_value_code = ["=", fmt_int(value, 8, 10, " "), "D"]
+        export_indication = if symbol_value.exported?, do: "$", else: " "
 
-      expression_value =
-        if symbol_value.expression_tokens == [] do
-          ""
-        else
-          [" []", concat_list_of_token_list_values(symbol_value.expression_tokens), "]"]
-        end
+        expression_value =
+          if symbol_value.expression_tokens == [] do
+            ""
+          else
+            [" []", concat_list_of_token_list_values(symbol_value.expression_tokens), "]"]
+          end
 
-      IO.puts([
-        export_indication,
-        fmt_string(name, 8),
-        ": ",
-        value_code,
-        relocation_code,
-        expression_value
-      ])
-    end)
+        [
+          export_indication,
+          fmt_string(name, 8, :right),
+          " ",
+          ": ",
+          octal_value_code,
+          relocation_code,
+          decimal_value_code,
+          expression_value
+        ]
+      end)
+
+    count_in_1st_column = div(length(symbol_listings) + @columns - 1, @columns)
+
+    Enum.each(
+      0..(count_in_1st_column - 1),
+      fn line ->
+        Enum.map(0..(@columns - 1), fn column ->
+          prefix = if column == 0, do: "", else: "    |    "
+          this = Enum.at(symbol_listings, line + column * count_in_1st_column)
+          if this != nil, do: [prefix, this], else: ""
+        end)
+        |> IO.puts()
+      end
+    )
 
     state
   end

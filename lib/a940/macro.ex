@@ -11,7 +11,7 @@ defmodule A940.Macro do
             generated_index: 0,
             level: 0
 
-  @debug_line nil
+  @debug_line 99999
 
   def macro(%State{} = state, :first_call), do: state
 

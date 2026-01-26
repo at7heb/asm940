@@ -11,7 +11,7 @@ defmodule A940.Expression do
             current_relocation: 0,
             default_base: 10
 
-  @debug_line nil
+  @debug_line 99999
 
   @doc """
   From the NARP manual.

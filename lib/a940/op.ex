@@ -12,6 +12,8 @@ defmodule A940.Op do
             define_location?: true,
             assembly_defined?: false
 
+  # @address_ones 0o37_777
+
   def new(
         value,
         class \\ :yes_address,
@@ -328,13 +330,24 @@ defmodule A940.Op do
         true -> 0
       end
 
+    # {:op_not_directive, state.line_number, state.address_tokens_list} |> dbg
+
     address =
       cond do
         state.operation.address_class == :maybe_address and state.address_tokens_list == [[]] ->
           {0, 0}
 
         state.operation.address_class != :no_address and state.address_tokens_list != [[]] ->
-          A940.Expression.evaluate(state)
+          first_address_tokens = hd(state.address_tokens_list)
+
+          if {:delimiter, "="} == hd(first_address_tokens) do
+            first_address_tokens
+            # |> List.replace_at(0, {:delimiter, "="})
+            |> List.insert_at(1, {:special, "["})
+            |> List.insert_at(999_999_999, {:special, "]"})
+          else
+            A940.Expression.evaluate(state)
+          end
 
         true ->
           {0, 0}
@@ -342,12 +355,16 @@ defmodule A940.Op do
 
     cond do
       match?([delimiter: "=", number: {_addr, _relo}], address) ->
-        # IO.puts("1 want to put #{inspect(address)} into instruction")
+        # IO.puts("1 want to put #{inspect(address)} into instruction line #{state.line_number}")
+        update_opcode_memory(state, address, tag, indirect)
+
+      is_list(address) and length(address) >= 2 and hd(address) == {:delimiter, "="} ->
+        # IO.puts("1.5 putting literal expression for later resolution")
         update_opcode_memory(state, address, tag, indirect)
 
       is_tuple(address) and tuple_size(address) == 2 and is_number(elem(address, 0)) and
           is_number(elem(address, 1)) ->
-        # IO.puts("2 want to put #{inspect(address)} into instruction")
+        # IO.puts("2 want to put #{inspect(address)} into instruction line #{state.line_number}")
 
         update_opcode_memory(
           state,

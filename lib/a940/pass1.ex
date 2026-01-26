@@ -5,7 +5,7 @@ defmodule A940.Pass1 do
   @address_terminators [{:spaces, " "}, {:eol, ""}]
   @addresses_terminators [{:delimiter, ","}, {:spaces, " "}, {:eol, ""}]
 
-  @debug_line nil
+  @debug_line 99999
 
   def run(%A940.State{} = state) do
     infinite_enumerable = Stream.cycle([:a, :b])
@@ -173,9 +173,9 @@ defmodule A940.Pass1 do
             {tokens, remaining}
           end
 
-        # if state.line_number == @debug_line do
-        #   address_tokens_list |> dbg()
-        # end
+        if state.line_number == @debug_line do
+          address_tokens_list |> dbg()
+        end
 
         state = %{state | address_tokens_list: address_tokens_list, comment: comment_tokens_list}
 

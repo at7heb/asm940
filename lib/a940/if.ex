@@ -28,7 +28,7 @@ defmodule A940.If do
             elsf_count: 0,
             else_count: 0
 
-  @debug_line nil
+  @debug_line 99999
 
   def f_if(%State{} = state, :first_call) do
     cond do

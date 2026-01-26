@@ -109,7 +109,7 @@ defmodule A940.Directive do
       # State.addzz_memory(state, 0, tokens_list)
 
       match?([delimiter: "=", number: {_val, _relocation}], address) ->
-        address |> dbg
+        # address |> dbg
 
         Memory.set_memory(
           State.get_current_location(state),

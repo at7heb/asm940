@@ -25,8 +25,8 @@ defmodule A940.Resolve do
         value.address_expression != [] and hd(value.address_expression) == {:delimiter, "="}
       end)
 
-    IO.puts("#{length(memory)} memory entries")
-    IO.puts("#{length(has_literals)} of memory have literal addresses")
+    # IO.puts("#{length(memory)} memory entries")
+    # IO.puts("#{length(has_literals)} of memory have literal addresses")
 
     evaluated_addresses_and_literals =
       Enum.map(has_literals, &evaluate_a_literal(state, &1))

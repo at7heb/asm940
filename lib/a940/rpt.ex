@@ -12,7 +12,7 @@ defmodule A940.Rpt do
             first_time: false,
             iteration_symbol: ""
 
-  @debug_line nil
+  @debug_line 99999
 
   def rpt(%State{} = state, :first_call) do
     state
