@@ -201,6 +201,10 @@ defmodule A940.Directive do
       when is_list(expression_tokens) do
     # {state.label_tokens, expression_tokens} |> dbg
 
+    {A940.Pass1.label_name(state.label_tokens), expression_tokens,
+     A940.Pass1.label_global(state.label_tokens)}
+    |> dbg
+
     State.redefine_symbol_as_expression(
       state,
       A940.Pass1.label_name(state.label_tokens),
@@ -217,6 +221,9 @@ defmodule A940.Directive do
 
     # okay to re-define a symbol
     # state, symbol_name, value, ?, relocation, exported)
+    # {A940.Pass1.label_name(state.label_tokens), {val, relocation},
+    #  A940.Pass1.label_global(state.label_tokens)}
+    # |> dbg
 
     State.redefine_symbol_value(
       state,
@@ -305,7 +312,7 @@ defmodule A940.Directive do
     Enum.reduce(state.address_tokens_list, state, fn [token], state ->
       # token |> dbg
       {:symbol, symbol_name} = token
-      State.remove_symbol(state, symbol_name)
+      State.forget_symbol(state, symbol_name)
     end)
   end
 

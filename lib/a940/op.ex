@@ -463,4 +463,8 @@ defmodule A940.Op do
       true -> :no_address
     end
   end
+
+  def all_op_table_content() do
+    :ets.tab2list(@opcode_table)
+  end
 end

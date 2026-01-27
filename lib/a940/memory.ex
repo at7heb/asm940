@@ -219,4 +219,8 @@ defmodule A940.Memory do
 
     state
   end
+
+  def all_memory_content() do
+    :ets.tab2list(@mem_ets)
+  end
 end

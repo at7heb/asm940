@@ -6,6 +6,8 @@ defmodule A940.Pass2 do
     # |> A940.Memory.dump_memory("second")
     |> A940.Resolve.update_symbol_references()
     # |> A940.Memory.dump_memory("third")
+    |> A940.State.delete_forgotten_symbols()
     |> A940.Listing.make_listing()
+    |> A940.MakeElixirBinary.output_binary()
   end
 end

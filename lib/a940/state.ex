@@ -141,22 +141,21 @@ defmodule A940.State do
       cond do
         old_address_value == nil ->
           # "redefine_symbol_value first definition" |> dbg
-          Address.new(value, relocation, exported?, false, mask)
+          Address.new_masked(value, relocation, exported?, mask)
 
         true ->
           # "redefine_symbol_value subsequent definition" |> dbg
 
-          Address.new(
+          Address.new_masked(
             value,
             relocation,
             old_address_value.exported? or exported?,
-            old_address_value.forgotten?,
-            mask
+            mask,
+            old_address_value.forgotten?
           )
       end
 
     new_symbols = Map.put(state.symbols, symbol_name, new_address_value)
-
     %{state | symbols: new_symbols}
   end
 
@@ -167,10 +166,33 @@ defmodule A940.State do
   end
 
   # This is used when the label isn't for an address, like if it is a macro
-  def remove_symbol(%__MODULE__{} = state, symbol_name)
+  def forget_symbol(%__MODULE__{} = state, symbol_name)
       when is_binary(symbol_name) do
     # {"Symbol---------------------- Removal", Process.info(self(), :current_stacktrace)} |> dbg
-    new_symbols = Map.delete(state.symbols, symbol_name)
+    new_symbol = Map.get(state.symbols, symbol_name)
+
+    if new_symbol == nil do
+      state
+    else
+      new_symbols = Map.put(state.symbols, symbol_name, %{new_symbol | forgotten?: true})
+      %{state | symbols: new_symbols}
+    end
+  end
+
+  def delete_forgotten_symbols(%__MODULE__{} = state) do
+    symbol_names = Map.keys(state.symbols)
+
+    new_symbols =
+      Enum.reduce(symbol_names, state.symbols, fn name, symbols ->
+        sym = Map.get(symbols, name)
+
+        if sym.forgotten? do
+          Map.delete(symbols, name)
+        else
+          symbols
+        end
+      end)
+
     %{state | symbols: new_symbols}
   end
 

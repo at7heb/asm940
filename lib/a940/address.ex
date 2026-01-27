@@ -20,6 +20,7 @@ defmodule A940.Address do
             relocation: 1,
             expression_tokens: [],
             b14?: true,
+            mask: 0o37_777,
             exported?: false,
             external?: false,
             forgotten?: false
@@ -35,6 +36,8 @@ defmodule A940.Address do
         true -> 0o77777777
       end
 
+    if forgotten? != true and forgotten? != false, do: raise("bad forgotten")
+
     %__MODULE__{
       value: value &&& mask,
       relocation: relocation,
@@ -48,12 +51,25 @@ defmodule A940.Address do
     {expression, xx, yy, zz} |> dbg
   end
 
+  def new_masked(value, relocation, exported?, mask, forgotten? \\ false)
+      when is_integer(value) and is_integer(relocation) and is_boolean(exported?) and
+             is_integer(mask) and is_boolean(forgotten?) do
+    %__MODULE__{
+      value: value &&& mask,
+      relocation: relocation,
+      exported?: exported?,
+      forgotten?: forgotten?,
+      mask: mask
+    }
+  end
+
   def new_expression(expression, exported \\ false) when is_list(expression),
     do: %__MODULE__{
       value: 0,
       relocation: 0,
       expression_tokens: expression,
       exported?: exported,
+      forgotten?: false,
       b14?: false
     }
 
