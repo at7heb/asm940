@@ -1,6 +1,15 @@
 defmodule LinkEdit do
-  defstruct(memory: %{}, symbols: %{}, memory_lc: nil, relocation_lc: nil, commands: [])
-  alias LE940.{Commands, Loader, Resolver, Output}
+  defstruct(
+    memory: %{},
+    symbols: %{},
+    opdefs: %{},
+    memory_lc: nil,
+    relocation_lc: nil,
+    load_commands: [],
+    save_command: []
+  )
+
+  alias LE940.{Commands, Resolver, Output}
 
   @moduledoc """
   handle link edit control language
@@ -55,10 +64,15 @@ defmodule LinkEdit do
   end
 
   def le(commands) do
-    new()
-    |> Commands.process(commands)
-    |> Loader.process()
-    |> Resolver.process()
-    |> Output.process()
+    state =
+      Commands.process(new(), commands)
+
+    _new_state =
+      Enum.reduce(state.load_commands, state, fn [fun, parms] = _command, state ->
+        fun.(state, parms)
+      end)
+      |> dbg
+      |> Resolver.process()
+      |> Output.process()
   end
 end

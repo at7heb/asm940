@@ -25,9 +25,6 @@ defmodule A940.MakeElixirBinary do
 
   defp write_binary(%__MODULE__{} = assembly_information, file_name) do
     binary = :erlang.term_to_binary(assembly_information)
-
-    # Write the binary to a file
-    # Use File.write! for simple cases (raises on error) or File.write for {:ok, :error} handling
     File.write!(Path.join(@path, file_name), binary)
     # => :ok (on success)
   end
