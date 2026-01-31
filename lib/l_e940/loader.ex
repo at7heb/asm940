@@ -15,15 +15,18 @@ defmodule LE940.Loader do
     new_state = %{state | memory_lc: stash_addr, relocation_lc: execution_addr}
     assembly_info = File.read!(path) |> :erlang.binary_to_term([:safe])
     sample("Memory Sample", assembly_info.mem)
-    sample("Symbol Sample", assembly_info.symb)
+    # sample("Symbol Sample", assembly_info.symb)
 
-    sample(
-      "Expression Sample",
-      Map.filter(assembly_info.symb, fn {_key, val} -> val.expression_tokens != [] end)
-    )
+    # sample(
+    #   "Expression Sample",
+    #   Map.filter(assembly_info.symb, fn {_key, val} -> val.expression_tokens != [] end)
+    # )
 
-    new_state = relocate_symbols(new_state, assembly_info.symb)
-    sample("relocated symbols", new_state.symbols)
+    new_state =
+      relocate_symbols(new_state, assembly_info.symb)
+      |> relocate_memory(assembly_info.mem)
+
+    # sample("relocated symbols", new_state.symbols)
     new_state
   end
 
@@ -38,6 +41,20 @@ defmodule LE940.Loader do
     sample = Enum.shuffle(alist) |> Enum.take(10)
     IO.puts(label)
     dbg(sample)
+  end
+
+  defp relocate_memory(%LinkEdit{} = state, %{} = mem) do
+    state_memory =
+      Map.to_list(mem)
+      |> Enum.reduce(state.memory, fn {name, value}, new_memory_map ->
+        stash_if_unique(
+          new_memory_map,
+          name,
+          relocate_one_word(state.relocation_lc, state.memory_lc, value)
+        )
+      end)
+
+    %{state | memory: state_memory}
   end
 
   defp relocate_symbols(%LinkEdit{} = state, %{} = symb) do
@@ -61,4 +78,13 @@ defmodule LE940.Loader do
   # otherwise return the symbol, and a later phase will resolve the values.
   # the expression probably involves a symbol from another assembly.
   defp relocate_symbol(_execution_lc, %A940.Address{} = addr), do: addr
+
+  defp stash_if_unique(map, key, value) do
+    if Map.has_key?(map, key),
+      do: Map.put(map, key, value),
+      else:
+        raise(
+          "multiple definition of key #{key}-old: #{inspect(Map.get(map, key))}, new: #{inspect(value)}}"
+        )
+  end
 end
