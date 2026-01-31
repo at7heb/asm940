@@ -15,7 +15,7 @@ defmodule A940.MakeElixirBinary do
     # create the output file from the lower case ident with extension ".e9b"
     meta = meta_term(state)
 
-    new(Op.all_op_table_content(), global_symbols(state.symbols), memory_term(state), meta)
+    new(Op.all_op_table_content(), state.symbols, memory_term(state), meta)
     |> write_binary(meta.ident <> @extension)
   end
 
@@ -33,11 +33,11 @@ defmodule A940.MakeElixirBinary do
     Memory.all_memory_content()
   end
 
-  defp global_symbols(%{} = symbols) do
-    Map.keys(symbols)
-    |> Enum.filter(fn name ->
-      symbol = Map.get(symbols, name)
-      symbol.exported? and not symbol.forgotten?
-    end)
-  end
+  # defp global_symbols(%{} = symbols) do
+  #   Map.keys(symbols)
+  #   |> Enum.filter(fn name ->
+  #     symbol = Map.get(symbols, name)
+  #     symbol.exported? and not symbol.forgotten?
+  #   end)
+  # end
 end
