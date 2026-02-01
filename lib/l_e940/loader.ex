@@ -9,8 +9,13 @@ defmodule LE940.Loader do
   end
 
   def load(%LinkEdit{} = state, {path} = _parameters) do
-    _assembly_info = File.read!(path) |> :erlang.binary_to_term([:unsafe]) |> Map.keys() |> dbg
-    state
+    assembly_info = File.read!(path) |> :erlang.binary_to_term([:safe])
+
+    new_state =
+      relocate_symbols(state, assembly_info.symb)
+      |> relocate_memory(assembly_info.mem)
+
+    new_state
   end
 
   def load(%LinkEdit{} = state, {stash_addr, execution_addr, path} = _parameters) do
