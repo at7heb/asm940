@@ -1,6 +1,8 @@
 defmodule LE940.Loader do
   import Bitwise
 
+  @all_ones 0o77_777_777
+
   def process(%LinkEdit{} = state) do
     raise "is this called?"
     state
@@ -12,9 +14,9 @@ defmodule LE940.Loader do
   end
 
   def load(%LinkEdit{} = state, {stash_addr, execution_addr, path} = _parameters) do
-    new_state = %{state | memory_lc: stash_addr, relocation_lc: execution_addr}
+    new_state = %{state | stash_offset: stash_addr, run_offset: execution_addr}
     assembly_info = File.read!(path) |> :erlang.binary_to_term([:safe])
-    sample("Memory Sample", assembly_info.mem)
+    # sample("Memory Sample", assembly_info.mem)
     # sample("Symbol Sample", assembly_info.symb)
 
     # sample(
@@ -43,25 +45,83 @@ defmodule LE940.Loader do
     dbg(sample)
   end
 
-  defp relocate_memory(%LinkEdit{} = state, %{} = mem) do
+  defp relocate_memory(%LinkEdit{} = state, mem) when is_list(mem) do
     state_memory =
-      Map.to_list(mem)
-      |> Enum.reduce(state.memory, fn {name, value}, new_memory_map ->
+      Enum.reduce(mem, state.memory, fn memory_entry, new_memory_map ->
+        {adjusted_address, adjusted_word} =
+          relocate_one_word(state.run_offset, state.stash_offset, memory_entry)
+
         stash_if_unique(
           new_memory_map,
-          name,
-          relocate_one_word(state.relocation_lc, state.memory_lc, value)
+          adjusted_address,
+          adjusted_word
         )
       end)
 
     %{state | memory: state_memory}
   end
 
+  defp relocate_one_word(run_offset, stash_offset, memory_entry) do
+    {adjust_address_of_memory(stash_offset, memory_entry),
+     adjust_memory_content_address(run_offset, memory_entry)}
+  end
+
+  defp adjust_address_of_memory(
+         _stash_offset,
+         {%A940.MemoryAddress{relocation: 0} = addr, _, _}
+       ),
+       do: addr
+
+  defp adjust_address_of_memory(
+         stash_offset,
+         {%A940.MemoryAddress{relocation: 1} = addr, _, _} = _memory_entry
+       ) do
+    %{addr | location: addr.location + stash_offset, relocation: 0}
+  end
+
+  defp adjust_memory_content_address(
+         run_offset,
+         {_, %A940.MemoryValue{address_expression: []} = mem, _} = _memory_entry
+       ) do
+    new_address = mem.value &&& mem.mask + mem.relocation_value * run_offset &&& mem.mask
+    new_mem_value = (mem.value &&& bxor(mem.mask, @all_ones)) ||| new_address
+    %{mem | value: new_mem_value}
+  end
+
+  defp adjust_memory_content_address(
+         _run_offset,
+         {_, %A940.MemoryValue{} = mem, _} = _memory_entry
+       ) do
+    # {"runtime expression", mem.address_expression} |> dbg
+    mem
+  end
+
+  # defp relocate_one_word(
+  #        run_offset,
+  #        stash_offset,
+  #        {%A940.MemoryAddress{} = address0, %A940.MemoryValue{} = word_value,
+  #         %A940.MemoryAddress{} = address1}
+  #      ) do
+  #   if address1.value != 0 or address1.relocation != 0 or address1.expression_tokens != [],
+  #     do: raise("Memory word at #{inspect(address0)} has funny address1 #{inspect(address1)}")
+
+  #   new_adress = adjust_address_for_loading(stash_offset, address0)
+  #   new_word_value = adjust_address_for_running(run_offset, word_value)
+  # end
+
+  # defp relocate_one_word(
+  #        run_offset,
+  #        stash_offset,
+  #        {%A940.MemoryAddress{relocation: 1, expression_tokens: []} = address0,
+  #         %A940.MemoryValue{} = word_value, %A940.MemoryAddress{} = address1}
+  #      ) do
+  # end
+
   defp relocate_symbols(%LinkEdit{} = state, %{} = symb) do
     state_symbols =
       Map.to_list(symb)
       |> Enum.reduce(%{}, fn {name, value}, new_symbol_map ->
-        Map.put(new_symbol_map, name, relocate_symbol(state.relocation_lc, value))
+        Map.put(new_symbol_map, name, relocate_symbol(state.run_offset, value))
       end)
 
     %{state | symbols: state_symbols}
@@ -80,11 +140,11 @@ defmodule LE940.Loader do
   defp relocate_symbol(_execution_lc, %A940.Address{} = addr), do: addr
 
   defp stash_if_unique(map, key, value) do
-    if Map.has_key?(map, key),
+    if not Map.has_key?(map, key),
       do: Map.put(map, key, value),
       else:
         raise(
-          "multiple definition of key #{key}-old: #{inspect(Map.get(map, key))}, new: #{inspect(value)}}"
+          "multiple definition of key #{inspect(key)}-old: #{inspect(Map.get(map, key))}, new: #{inspect(value)}}"
         )
   end
 end

@@ -72,4 +72,18 @@ defmodule A940.MemoryAddress do
   def source(%__MODULE__{} = address) do
     %{address | location: 0, relocation: 0}
   end
+
+  defimpl Inspect, for: __MODULE__ do
+    def inspect(%A940.MemoryAddress{} = memory_address, _opts) do
+      "%MemoryAddress{addr: #{Integer.to_string(memory_address.location, 8)} " <>
+        "relocation: #{memory_address.relocation}}" <>
+        if memory_address.opcode != [],
+          do:
+            "line: #{memory_address.line_number} " <>
+              "#{memory_address.label} " <>
+              "#{memory_address.opcode} " <>
+              "#{memory_address.address}",
+          else: ""
+    end
+  end
 end

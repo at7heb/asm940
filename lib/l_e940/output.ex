@@ -5,7 +5,8 @@ defmodule LE940.Output do
   end
 
   def process(%LinkEdit{} = state) do
-    [fun, params] = state.save_command |> dbg
+    # |> dbg
+    [fun, params] = state.save_command
     fun.(state, params)
   end
 

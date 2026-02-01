@@ -3,8 +3,8 @@ defmodule LinkEdit do
     memory: %{},
     symbols: %{},
     opdefs: %{},
-    memory_lc: nil,
-    relocation_lc: nil,
+    stash_offset: nil,
+    run_offset: nil,
     load_commands: [],
     save_command: []
   )
@@ -71,8 +71,10 @@ defmodule LinkEdit do
       Enum.reduce(state.load_commands, state, fn [fun, parms] = _command, state ->
         fun.(state, parms)
       end)
-      |> dbg
+      # |> dbg
       |> Resolver.process()
       |> Output.process()
+
+    nil
   end
 end
