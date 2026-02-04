@@ -9,18 +9,12 @@ defmodule LE940.Loader do
   end
 
   def load(%LinkEdit{} = state, {path} = _parameters) do
-    assembly_info = File.read!(path) |> :erlang.binary_to_term([:safe])
-
-    new_state =
-      relocate_symbols(state, assembly_info.symb)
-      |> relocate_memory(assembly_info.mem)
-
-    new_state
+    assembly_info = File.read!(path) |> :erlang.binary_to_term()
+    handle_new_assembly_info(state, assembly_info)
   end
 
   def load(%LinkEdit{} = state, {stash_addr, execution_addr, path} = _parameters) do
-    new_state = %{state | stash_offset: stash_addr, run_offset: execution_addr}
-    assembly_info = File.read!(path) |> :erlang.binary_to_term([:safe])
+    assembly_info = File.read!(path) |> :erlang.binary_to_term()
     # sample("Memory Sample", assembly_info.mem)
     # sample("Symbol Sample", assembly_info.symb)
 
@@ -28,27 +22,33 @@ defmodule LE940.Loader do
     #   "Expression Sample",
     #   Map.filter(assembly_info.symb, fn {_key, val} -> val.expression_tokens != [] end)
     # )
-
-    new_state =
-      relocate_symbols(new_state, assembly_info.symb)
-      |> relocate_memory(assembly_info.mem)
-
-    # sample("relocated symbols", new_state.symbols)
-    new_state
+    %{state | stash_offset: stash_addr, run_offset: execution_addr}
+    |> handle_new_assembly_info(assembly_info)
   end
 
-  defp sample(label, map) when is_binary(label) and is_map(map) do
-    sample = Map.to_list(map) |> Enum.shuffle() |> Enum.take(10)
-    IO.puts(label)
-    dbg(sample)
-    # map |> dbg
+  defp handle_new_assembly_info(%LinkEdit{} = state, assembly_info) do
+    relocate_symbols(state, assembly_info.symb)
+    |> relocate_memory(assembly_info.mem)
+    |> adjust_state_offsets(assembly_info.meta)
   end
 
-  defp sample(label, alist) when is_binary(label) and is_list(alist) do
-    sample = Enum.shuffle(alist) |> Enum.take(10)
-    IO.puts(label)
-    dbg(sample)
+  defp adjust_state_offsets(%LinkEdit{} = state, %{text_size: text_size} = meta) do
+    {state.stash_offset, meta} |> dbg
+    %{state | stash_offset: text_size + state.stash_offset}
   end
+
+  # defp sample(label, map) when is_binary(label) and is_map(map) do
+  #   sample = Map.to_list(map) |> Enum.shuffle() |> Enum.take(10)
+  #   IO.puts(label)
+  #   dbg(sample)
+  #   # map |> dbg
+  # end
+
+  # defp sample(label, alist) when is_binary(label) and is_list(alist) do
+  #   sample = Enum.shuffle(alist) |> Enum.take(10)
+  #   IO.puts(label)
+  #   dbg(sample)
+  # end
 
   defp relocate_memory(%LinkEdit{} = state, mem) when is_list(mem) do
     state_memory =
@@ -63,6 +63,7 @@ defmodule LE940.Loader do
         )
       end)
 
+    show_memory_expressions(state_memory)
     %{state | memory: state_memory}
   end
 
@@ -151,5 +152,19 @@ defmodule LE940.Loader do
         raise(
           "multiple definition of key #{inspect(key)}-old: #{inspect(Map.get(map, key))}, new: #{inspect(value)}}"
         )
+  end
+
+  def show_memory_expressions(state_memory) do
+    state_memory
+    |> Map.to_list()
+    |> Enum.map(fn {addr, val} -> {addr.location, val} end)
+    |> Enum.sort(fn {addr0, _val0}, {addr1, _val1} -> addr0 <= addr1 end)
+    |> Enum.filter(fn {_addr, val} -> val.address_expression != [] end)
+    |> Enum.each(fn {addr, val} ->
+      IO.puts(
+        "#{Integer.to_string(addr, 8)} -> #{Integer.to_string(val.value, 8)}" <>
+          "&#{Integer.to_string(val.mask, 8)}, #{inspect(val.address_expression)}"
+      )
+    end)
   end
 end

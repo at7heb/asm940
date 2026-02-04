@@ -1,4 +1,5 @@
 defmodule A940.MakeElixirBinary do
+  alias A940.MemoryAddress
   alias A940.{Memory, Op, State}
 
   defstruct ops: [],
@@ -20,7 +21,12 @@ defmodule A940.MakeElixirBinary do
   end
 
   defp meta_term(%State{} = state) do
-    %{} |> Map.put(:ident, state.ident) |> Map.put(:date_time, NaiveDateTime.utc_now())
+    relocatable_section_size = calculate_relocatable_section_size()
+
+    %{}
+    |> Map.put(:ident, state.ident)
+    |> Map.put(:date_time, NaiveDateTime.utc_now())
+    |> Map.put(:text_size, relocatable_section_size)
   end
 
   defp write_binary(%__MODULE__{} = assembly_information, file_name) do
@@ -31,6 +37,21 @@ defmodule A940.MakeElixirBinary do
 
   defp memory_term(_state) do
     Memory.all_memory_content()
+  end
+
+  defp calculate_relocatable_section_size() do
+    size =
+      1 +
+        (Memory.all_memory_content()
+         |> Enum.map(fn {%MemoryAddress{} = addr, _, _} ->
+           if addr.relocation == 0,
+             do: 0,
+             else: addr.location
+         end)
+         |> Enum.max())
+
+    IO.puts("Relocatable Text Section Size = #{size} = #{Integer.to_string(size, 8)}B")
+    size
   end
 
   # defp global_symbols(%{} = symbols) do

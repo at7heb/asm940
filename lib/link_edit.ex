@@ -74,6 +74,60 @@ defmodule LinkEdit do
     |> le
   end
 
+  def le1() do
+    [
+      # "load 240 240 temp/1BAS.e9b",
+      "load 0 0 temp/1BAS.e9b",
+      "save aaa"
+    ]
+    |> le
+  end
+
+  def le2() do
+    [
+      # "load 240 240 temp/1BAS.e9b",
+      "load 240 240 temp/2BAS.e9b",
+      "save aaa"
+    ]
+    |> le
+  end
+
+  def le3() do
+    [
+      # "load 240 240 temp/1BAS.e9b",
+      "load 240 240 temp/3BAS.e9b",
+      "save aaa"
+    ]
+    |> le
+  end
+
+  def le4() do
+    [
+      # "load 240 240 temp/1BAS.e9b",
+      "load 240 240 temp/4BAS.e9b",
+      "save aaa"
+    ]
+    |> le
+  end
+
+  def le5() do
+    [
+      # "load 240 240 temp/1BAS.e9b",
+      "load 240 240 temp/5BAS.e9b",
+      "save aaa"
+    ]
+    |> le
+  end
+
+  def le6() do
+    [
+      # "load 240 240 temp/1BAS.e9b",
+      "load 240 240 temp/6BAS.e9b",
+      "save aaa"
+    ]
+    |> le
+  end
+
   def le(commands) do
     state =
       Commands.process(new(), commands)
