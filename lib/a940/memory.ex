@@ -63,8 +63,9 @@ defmodule A940.Memory do
           content
           | value: new_content_value,
             relocation_value: address_relocation,
-            mask: @all_ones,
-            dummy: false
+            mask: 0,
+            dummy: false,
+            address_expression: []
         }
 
         if location.location == @trace_location, do: Conductor.log_this()
