@@ -66,9 +66,11 @@ defmodule LinkEdit do
   def le0() do
     [
       "load 240 240 temp/1BAS.e9b",
-      "load 24000 24000 temp/6BAS.e9b",
+      "load 10000 24000 temp/6BAS.e9b",
       "load 20000 20000 temp/2BAS.e9b",
       "load temp/3BAS.e9b",
+      "load 24000 24000 temp/4BAS.e9b",
+      "load temp/5BAS.e9b",
       "save aaa"
     ]
     |> le

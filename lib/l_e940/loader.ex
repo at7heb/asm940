@@ -22,6 +22,8 @@ defmodule LE940.Loader do
     #   "Expression Sample",
     #   Map.filter(assembly_info.symb, fn {_key, val} -> val.expression_tokens != [] end)
     # )
+    {"loader", stash_addr, execution_addr, path} |> dbg
+
     %{state | stash_offset: stash_addr, run_offset: execution_addr}
     |> handle_new_assembly_info(assembly_info)
   end
