@@ -3,10 +3,10 @@ defmodule LE940.Loader do
 
   @all_ones 0o77_777_777
 
-  def process(%LinkEdit{} = state) do
-    raise "is this called?"
-    state
-  end
+  # def process(%LinkEdit{} = state) do
+  #   raise "is this called?"
+  #   state
+  # end
 
   def load(%LinkEdit{} = state, {path} = _parameters) do
     assembly_info = File.read!(path) |> :erlang.binary_to_term()
@@ -35,7 +35,8 @@ defmodule LE940.Loader do
   end
 
   defp adjust_state_offsets(%LinkEdit{} = state, %{text_size: text_size} = meta) do
-    {state.stash_offset, meta} |> dbg
+    {:symbol_table_size, map_size(state.symbols)} |> dbg
+    {state.stash_offset, Integer.to_string(text_size, 8), meta} |> dbg
     %{state | stash_offset: text_size + state.stash_offset}
   end
 
@@ -104,27 +105,6 @@ defmodule LE940.Loader do
     mem
   end
 
-  # defp relocate_one_word(
-  #        run_offset,
-  #        stash_offset,
-  #        {%A940.MemoryAddress{} = address0, %A940.MemoryValue{} = word_value,
-  #         %A940.MemoryAddress{} = address1}
-  #      ) do
-  #   if address1.value != 0 or address1.relocation != 0 or address1.expression_tokens != [],
-  #     do: raise("Memory word at #{inspect(address0)} has funny address1 #{inspect(address1)}")
-
-  #   new_adress = adjust_address_for_loading(stash_offset, address0)
-  #   new_word_value = adjust_address_for_running(run_offset, word_value)
-  # end
-
-  # defp relocate_one_word(
-  #        run_offset,
-  #        stash_offset,
-  #        {%A940.MemoryAddress{relocation: 1, expression_tokens: []} = address0,
-  #         %A940.MemoryValue{} = word_value, %A940.MemoryAddress{} = address1}
-  #      ) do
-  # end
-
   defp relocate_symbols(%LinkEdit{} = state, %{} = symb) do
     state_symbols =
       Map.to_list(symb)
@@ -156,17 +136,22 @@ defmodule LE940.Loader do
         )
   end
 
-  def show_memory_expressions(state_memory) do
+  def show_memory_expressions(_state_memory) do
+    # get_locations_to_resolve(state_memory)
+    # |> Enum.each(fn {addr, val} ->
+    #   IO.puts(
+    #     "#{Integer.to_string(addr, 8)} -> #{Integer.to_string(val.value, 8)}" <>
+    #       "&#{Integer.to_string(val.mask, 8)}, #{inspect(val.address_expression)}"
+    #   )
+    # end)
+    nil
+  end
+
+  def get_locations_to_resolve(state_memory) do
     state_memory
     |> Map.to_list()
     |> Enum.map(fn {addr, val} -> {addr.location, val} end)
     |> Enum.sort(fn {addr0, _val0}, {addr1, _val1} -> addr0 <= addr1 end)
     |> Enum.filter(fn {_addr, val} -> val.address_expression != [] end)
-    |> Enum.each(fn {addr, val} ->
-      IO.puts(
-        "#{Integer.to_string(addr, 8)} -> #{Integer.to_string(val.value, 8)}" <>
-          "&#{Integer.to_string(val.mask, 8)}, #{inspect(val.address_expression)}"
-      )
-    end)
   end
 end

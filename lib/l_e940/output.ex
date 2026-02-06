@@ -18,10 +18,10 @@ defmodule LE940.Output do
   end
 
   defp stats(%LinkEdit{} = state) do
-    state.memory
-    j = Map.keys(state.memory)
-    k = Enum.take(j, 5)
-    k |> dbg
+    # state.memory
+    # j = Map.keys(state.memory)
+    # k = Enum.take_random(j, 10)
+    # k |> dbg
 
     IO.puts("------------------- Memory Location Ranges -------------------")
 
