@@ -282,7 +282,7 @@ defmodule A940.Listing do
     :ets.update_counter(@listing_ets, :current_line, 1)
   end
 
-  @columns 2
+  @columns 1
   def list_symbols(%State{symbols: symbols} = state) do
     symbol_names = Map.keys(symbols) |> Enum.sort()
 
@@ -304,14 +304,16 @@ defmodule A940.Listing do
           end
 
         [
-          export_indication,
+          "S-",
           fmt_string(name, 8, :right),
+          export_indication,
           " ",
           ": ",
           octal_value_code,
           relocation_code,
           decimal_value_code,
-          expression_value
+          expression_value,
+          " #{state.ident}"
         ]
       end)
 

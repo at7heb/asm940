@@ -2,6 +2,8 @@ defmodule LE940.Commands do
   @address_range 0..16383
 
   def process(%LinkEdit{} = state, commands) when is_list(commands) do
+    state |> dbg
+
     Enum.reduce(commands, state, fn command, state ->
       parse_and_translate_command(state, command)
     end)
@@ -51,24 +53,6 @@ defmodule LE940.Commands do
     %{state | load_commands: state.load_commands ++ [[&LE940.Loader.load/2, {path}]]}
   end
 
-  # defp parse_and_translate("load", [stash_address, execution_address, path])
-  #      when is_binary(stash_address) and is_binary(execution_address) and
-  #             is_binary(path) do
-  #   stash_addr = String.to_integer(stash_address, 8)
-  #   execution_addr = String.to_integer(execution_address, 8)
-
-  #   if stash_addr not in @address_range or execution_addr not in @address_range do
-  #     raise "illegal stash #{stash_addr} or execution #{execution_addr} address"
-  #   end
-
-  #   # Ensure file exists
-  #   if not File.exists?(path) do
-  #     raise "No such file as #{path}"
-  #   end
-
-  #   command = [LE940.Loader.load() / 2, {stash_addr, execution_addr, file}]
-  # end
-
   defp parse_and_translate_command(%LinkEdit{} = state, "save", [start_address, path])
        when is_binary(start_address) and is_binary(path) do
     if state.save_command != [], do: raise("only one save command is allowed")
@@ -79,19 +63,10 @@ defmodule LE940.Commands do
       raise "illegal start #{start_addr} address"
     end
 
-    # Ensure file exists
-    # if not File.exists?(path) do
-    #   raise "No such file as #{path}"
-    # end
-
     %{state | save_command: [&LE940.Output.save/2, {start_addr, path}]}
   end
 
   defp parse_and_translate_command(%LinkEdit{} = state, "save", [path]) when is_binary(path) do
-    # Ensure file exists
-    # if not File.exists?(path) do
-    #   raise "No such file as #{path}"
-    # end
     if state.save_command != [], do: raise("only one save command is allowed")
     if state.load_commands == [], do: raise("load command[s] must precede save")
 

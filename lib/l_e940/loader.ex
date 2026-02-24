@@ -15,27 +15,42 @@ defmodule LE940.Loader do
 
   def load(%LinkEdit{} = state, {stash_addr, execution_addr, path} = _parameters) do
     assembly_info = File.read!(path) |> :erlang.binary_to_term()
-    # sample("Memory Sample", assembly_info.mem)
-    # sample("Symbol Sample", assembly_info.symb)
-
-    # sample(
-    #   "Expression Sample",
-    #   Map.filter(assembly_info.symb, fn {_key, val} -> val.expression_tokens != [] end)
-    # )
-    {"loader", stash_addr, execution_addr, path} |> dbg
 
     %{state | stash_offset: stash_addr, run_offset: execution_addr}
     |> handle_new_assembly_info(assembly_info)
   end
 
   defp handle_new_assembly_info(%LinkEdit{} = state, assembly_info) do
-    relocate_symbols(state, assembly_info.symb)
+    relocated_symbols = relocate_symbols(state, assembly_info) |> dbg
+    resolved_assembly = LE940.Resolver.resolve_local_symbols(assembly_info, relocated_symbols)
+
+    stash_symbols(state, resolved_assembly, relocated_symbols)
     |> relocate_memory(assembly_info.mem)
     |> adjust_state_offsets(assembly_info.meta)
   end
 
+  def stash_symbols(%LinkEdit{} = state, %A940.MakeElixirBinary{} = assembly_info, %{} = symbols) do
+    ident = assembly_info.meta.ident
+    new_all_symbols = Map.put(state.all_symbols, ident, symbols)
+
+    exported_symbols =
+      Map.filter(symbols, fn {_key, value} ->
+        value.exported?
+      end)
+
+    new_exported_symbols =
+      Map.merge(state.exported_symbols, exported_symbols, fn key, val1, val2 ->
+        IO.puts("Multiply defined symbol: #{key} in #{ident}")
+        IO.puts("xst: #{inspect(val1)}")
+        IO.puts("new: #{inspect(val2)}")
+        if val1.exported?, do: val1, else: val2
+      end)
+
+    %{state | exported_symbols: new_exported_symbols, all_symbols: new_all_symbols}
+  end
+
   defp adjust_state_offsets(%LinkEdit{} = state, %{text_size: text_size} = meta) do
-    {:symbol_table_size, map_size(state.symbols)} |> dbg
+    {:symbol_table_size, map_size(state.exported_symbols)} |> dbg
     {state.stash_offset, Integer.to_string(text_size, 8), meta} |> dbg
     %{state | stash_offset: text_size + state.stash_offset}
   end
@@ -59,6 +74,9 @@ defmodule LE940.Loader do
         {adjusted_address, adjusted_word} =
           relocate_one_word(state.run_offset, state.stash_offset, memory_entry)
 
+        if adjusted_address.relocation != 0,
+          do: raise("relocatable address #{inspect(adjusted_address)}")
+
         stash_if_unique(
           new_memory_map,
           adjusted_address,
@@ -71,8 +89,11 @@ defmodule LE940.Loader do
   end
 
   defp relocate_one_word(run_offset, stash_offset, memory_entry) do
+    {run_offset, stash_offset, inspect(memory_entry)} |> dbg
+
     {adjust_address_of_memory(stash_offset, memory_entry),
      adjust_memory_content_address(run_offset, memory_entry)}
+    |> dbg
   end
 
   defp adjust_address_of_memory(
@@ -105,14 +126,14 @@ defmodule LE940.Loader do
     mem
   end
 
-  defp relocate_symbols(%LinkEdit{} = state, %{} = symb) do
-    state_symbols =
-      Map.to_list(symb)
-      |> Enum.reduce(%{}, fn {name, value}, new_symbol_map ->
-        Map.put(new_symbol_map, name, relocate_symbol(state.run_offset, value))
-      end)
-
-    %{state | symbols: state_symbols}
+  defp relocate_symbols(
+         %LinkEdit{} = state,
+         %A940.MakeElixirBinary{symb: symbols} = _assembly_info
+       ) do
+    Map.to_list(symbols)
+    |> Enum.reduce(%{}, fn {name, value}, relocated_symbol_map ->
+      Map.put(relocated_symbol_map, name, relocate_symbol(state.run_offset, value))
+    end)
   end
 
   # to relocate, must not be defined by an expression.
@@ -131,11 +152,16 @@ defmodule LE940.Loader do
     if not Map.has_key?(map, key),
       do: Map.put(map, key, value),
       else:
-        raise(
-          "multiple definition of key #{inspect(key)}-old: #{inspect(Map.get(map, key))}, new: #{inspect(value)}}"
+        (
+          "multiple definition of key #{inspect(key)}" |> dbg
+          IO.puts("old: #{inspect(Map.get(map, key))}")
+          IO.puts("new: #{inspect(value)}")
+          # leave the old one
+          map
         )
   end
 
+  @spec show_memory_expressions(any()) :: nil
   def show_memory_expressions(_state_memory) do
     # get_locations_to_resolve(state_memory)
     # |> Enum.each(fn {addr, val} ->

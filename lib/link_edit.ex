@@ -1,7 +1,8 @@
 defmodule LinkEdit do
   defstruct(
     memory: %{},
-    symbols: %{},
+    exported_symbols: %{},
+    all_symbols: %{},
     opdefs: %{},
     stash_offset: nil,
     run_offset: nil,
@@ -88,7 +89,7 @@ defmodule LinkEdit do
   def le2() do
     [
       # "load 240 240 temp/1BAS.e9b",
-      "load 240 240 temp/2BAS.e9b",
+      "load 20000 20000 temp/2BAS.e9b",
       "save aaa"
     ]
     |> le
@@ -97,7 +98,17 @@ defmodule LinkEdit do
   def le3() do
     [
       # "load 240 240 temp/1BAS.e9b",
-      "load 240 240 temp/3BAS.e9b",
+      "load 20000 20000 temp/3BAS.e9b",
+      "save aaa"
+    ]
+    |> le
+  end
+
+  def le23() do
+    [
+      # "load 240 240 temp/1BAS.e9b",
+      "load 20000 20000 temp/2BAS.e9b",
+      "load temp/3BAS.e9b",
       "save aaa"
     ]
     |> le
