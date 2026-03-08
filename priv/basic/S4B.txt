@@ -2562,9 +2562,10 @@ ATFG   SKN     FADG6        IS Y<O
        BRR     0               *****EXIT
 ATF4   DATA    31103755B     PI/2
        DATA    24210001B
-$PY    EQU     *
-ATF5   DATA    31103755B      PI
-       DATA    24211002B
+*$PY    EQU     *
+*ATF5   DATA    31103755B      PI
+*       DATA    24211002B
+ATF5	EQU	PY
 ATF6   DATA    20000000B
        DATA    00000023B
 ATF7   DATA    40000000B     -1
